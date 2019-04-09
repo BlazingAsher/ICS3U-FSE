@@ -127,8 +127,8 @@ class Processor:
         else:
             raise OSError
 class Index:
-    def __init__(self, **addargs):
-        self.client = pymongo.MongoClient(addargs.get("db"))
+    def __init__(self, **args):
+        self.client = pymongo.MongoClient(args.get("db"))
         self.db = self.client.fileindexer
         self.indexCollection = self.db.index
         self.settings = self.db.settings
@@ -166,4 +166,3 @@ class Index:
 
     def updateIndexById(self, docID, new):
         self.updateIndexByMongoQuery({"_id":docID}, new)
-        
