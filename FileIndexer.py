@@ -1,8 +1,6 @@
 import magic
 import re
 import os
-from PIL import Image, ExifTags
-from MediaInfo import MediaInfo
 import pymongo
 
 class Response:
@@ -13,53 +11,27 @@ class Response:
         self.message = message
         
 class Processor:
-    def __init__(self, **args):
-        self.magic = args.get("magic")
-        self.ffprobe = args.get("ffprobe")
-        self.SERVER_NAME = args.get("server_name")
+    def __init__(self, **kwargs):
+        self.magic = kwargs.get("magic")
+        self.ffprobe = kwargs.get("ffprobe")
+        self.SERVER_NAME = kwargs.get("server_name")
         self.mime = magic.Magic(mime=True, magic_file=self.magic)
         
-        self._client = pymongo.MongoClient(args.get("db"))
+        self._client = pymongo.MongoClient(kwargs.get("db"))
         self._db = self._client.fileindexer
         self._settingscol = self._db.settings
         self._settings = self._settingscol.find_one({"name":"global"})
     
-    def _image(self, path):
-        print("Image!")
-        img = Image.open(path)
-        if img._getexif():
-            totalExif = { ExifTags.TAGS[k]: v for k, v in img._getexif().items() if k in ExifTags.TAGS }
-            if self._settings["image"]["extended_exif"]:
-                return totalExif
-            else:
-                returnExif = {}
-                for exifKey in self._settings["image"]["simple_exif_tags"]:
-                    try:
-                        returnExif[exifKey] = totalExif[exifKey]
-                    except KeyError:
-                        pass
-                
-                return returnExif
-        else:
-            return {}
-        
-    def _document(self, path):
-        print("sellf!")
+    _plugins = {}
 
-    def _video(self, path):
-        info     = MediaInfo(filename = path, cmd=self.ffprobe, mode='ffprobe')
-        infoData = info.getInfo()
+    formatMap = {}
 
-        if self._settings["video"]["extended_videodata"]:
-            return infoData
-        else:
-            returnData = {}
-            for dataKey in self._settings["video"]["simple_video_tags"]:
-                try:
-                    returnData[dataKey] = infoData[dataKey]
-                except KeyError:
-                    pass
-            return returnData
+    extMap = {
+        "jpg": "image/jpeg",
+        "png": "image/png"
+    }
+
+    compiledMatches = {}
 
     def loadSettings(self):
         self._settings = self._settingscol.find_one({"name":"global"})
@@ -83,16 +55,24 @@ class Processor:
             self._settingscol.insert(defaultSettings)
             self._settings = defaultSettings
 
-    formatMap = {
-        "image\/.*": _image,
-        "video\/.*": _video
-    }
+    def loadPlugins(self):
+        # This will inject a plugin's code into this class
+        pluginList = [x for x in os.listdir("plugins") if x[x.rfind(".")+1:].lower() == "py"]
+        for pluginFile in pluginList:
+            if pluginFile != "__init__.py":
+                pluginBasename = pluginFile[:pluginFile.rfind(".")]
+                plugin = __import__("plugins."+pluginBasename)
+                plugID = eval("plugin.%s.get_id()"%pluginBasename)
+                self._plugins[plugID] = eval("plugin."+pluginBasename+".plugin_main")
+                handlers = eval("plugin.%s.get_handlers()"%pluginBasename)
+                for handler in handlers:
+                    self.formatMap[handler] = plugID
 
-    extMap = {
-        "jpg": "image/jpeg",
-        "png": "image/png"
-    }
-
+        self.compiledMatches = self.compileExpressions(self.formatMap.keys())
+        
+    def getPlugins(self):
+        return self.formatMap
+    
     def extToMime(self, ext):
         ext = ext.lower()
         print(ext)
@@ -101,11 +81,9 @@ class Processor:
         except KeyError:
             return "none/none"
 
-    def compileExpressions(expList):
+    def compileExpressions(self, expList):
         matchList = [[exp, re.compile(exp)] for exp in list(expList)]
         return matchList
-    
-    compiledMatches = compileExpressions(formatMap.keys())
 
     def getCompiled(self):
         return self.compiledMatches
@@ -129,9 +107,11 @@ class Processor:
             print("thru mime")
             mime = self.mime.from_file(path)
         print(mime)
+        # Potential logic change needed here
         additionalPlugin = self.dictKeyRegEx(self.formatMap, mime)
+        print("to plugin",additionalPlugin)
         if additionalPlugin:
-            additional = additionalPlugin(self, path)
+            additional = self._plugins[additionalPlugin](self, path)
         else:
             additional = {}
         if not additional:
@@ -148,8 +128,8 @@ class Processor:
         else:
             raise OSError
 class Index:
-    def __init__(self, **args):
-        self._client = pymongo.MongoClient(args.get("db"))
+    def __init__(self, **kwargs):
+        self._client = pymongo.MongoClient(kwargs.get("db"))
         self._db = self._client.fileindexer
         self._indexCollection = self._db.index
     

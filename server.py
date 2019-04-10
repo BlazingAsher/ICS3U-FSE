@@ -11,6 +11,7 @@ MAGIC_FILE = env("MAGIC_FILE")
 FFPROBE = env("FFPROBE")
 fp = fi.Processor(db=MONGO_STRING, magic=MAGIC_FILE, ffprobe=FFPROBE, server_name=SERVER_NAME)
 fp.loadSettings()
+fp.loadPlugins()
 
 fileIndex = fi.Index(db=MONGO_STRING)
 def populateProperties(path, options={}):
