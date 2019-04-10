@@ -119,7 +119,7 @@ class Processor:
     def getAllExtended(self, path):
         ext = path[path.rfind(".")+1:].lower()
         mime = "none/none"
-        if len(ext) > 1 and self._settings["crawler"]["identify_by_extension"]:
+        if len(ext) > 0 and self._settings["crawler"]["identify_by_extension"]:
             # Has a file extension
             # map it
             mime = self.extToMime(ext)
