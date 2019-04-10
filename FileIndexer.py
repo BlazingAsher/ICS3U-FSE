@@ -16,21 +16,24 @@ class Processor:
     def __init__(self, **args):
         self.magic = args.get("magic")
         self.ffprobe = args.get("ffprobe")
+        self.SERVER_NAME = args.get("server_name")
         self.mime = magic.Magic(mime=True, magic_file=self.magic)
         
-    EXTENDED_EXIF = False
+        self._client = pymongo.MongoClient(args.get("db"))
+        self._db = self._client.fileindexer
+        self._settingscol = self._db.settings
+        self._settings = self._settingscol.find_one({"name":"global"})
     
     def _image(self, path):
         print("Image!")
         img = Image.open(path)
         if img._getexif():
             totalExif = { ExifTags.TAGS[k]: v for k, v in img._getexif().items() if k in ExifTags.TAGS }
-            if self.EXTENDED_EXIF:
+            if self._settings["image"]["extended_exif"]:
                 return totalExif
             else:
                 returnExif = {}
-                exifKeyList = ["DateTimeOriginal","Make","Model","Flash","UserComment","Software","DateTime","LensModel"]
-                for exifKey in exifKeyList:
+                for exifKey in self._settings["image"]["simple_exif_tags"]:
                     try:
                         returnExif[exifKey] = totalExif[exifKey]
                     except KeyError:
@@ -43,25 +46,43 @@ class Processor:
     def _document(self, path):
         print("sellf!")
 
-    EXTENDED_VIDEODATA = False
     def _video(self, path):
         info     = MediaInfo(filename = path, cmd=self.ffprobe, mode='ffprobe')
         infoData = info.getInfo()
 
-        if self.EXTENDED_VIDEODATA:
+        if self._settings["video"]["extended_videodata"]:
             return infoData
         else:
             returnData = {}
-            dataKeyList = ["container", "duration","bitrate","haveVideo","haveAudio","videoCodec","videoWidth","videoHeight","audicCodec"]
-            for dataKey in dataKeyList:
+            for dataKey in self._settings["video"]["simple_video_tags"]:
                 try:
                     returnData[dataKey] = infoData[dataKey]
                 except KeyError:
                     pass
             return returnData
 
-    USE_FILE_EXT = True
-    
+    def loadSettings(self):
+        self._settings = self._settingscol.find_one({"name":"global"})
+        if self._settings is None:
+            print("Generating default settings")
+            defaultSettings = {
+                "name": "global",
+                "crawler" : {
+                        "identify_by_extension": True
+                    },
+                "image": {
+                        "extended_exif": False,
+                        "simple_exif_tags": ["DateTimeOriginal","Make","Model","Flash","UserComment","Software","DateTime","LensModel"]
+                    },
+                "video": {
+                        "extended_videodata": False,
+                        "simple_video_tags": ["container", "duration","bitrate","haveVideo","haveAudio","videoCodec","videoWidth","videoHeight","audicCodec"]
+                    }
+                }
+            #PUSH TO SERVER AND SET LOCAL
+            self._settingscol.insert(defaultSettings)
+            self._settings = defaultSettings
+
     formatMap = {
         "image\/.*": _image,
         "video\/.*": _video
@@ -98,7 +119,7 @@ class Processor:
     def getAllExtended(self, path):
         ext = path[path.rfind(".")+1:].lower()
         mime = "none/none"
-        if len(ext) > 1 and self.USE_FILE_EXT:
+        if len(ext) > 1 and self._settings["crawler"]["identify_by_extension"]:
             # Has a file extension
             # map it
             mime = self.extToMime(ext)
@@ -128,29 +149,28 @@ class Processor:
             raise OSError
 class Index:
     def __init__(self, **args):
-        self.client = pymongo.MongoClient(args.get("db"))
-        self.db = self.client.fileindexer
-        self.indexCollection = self.db.index
-        self.settings = self.db.settings
+        self._client = pymongo.MongoClient(args.get("db"))
+        self._db = self._client.fileindexer
+        self._indexCollection = self._db.index
     
     def deleteIndex(self):
-        self.indexCollection.drop()
+        self._indexCollection.drop()
 
     def getAll(self):
-        return self.indexCollection.find()
+        return self._indexCollection.find()
 
     def getOneByQuery(self, query):
-        return self.indexCollection.find_one(query)
+        return self._indexCollection.find_one(query)
 
     def getAllByQuery(self, query):
-        return self.indexCollection.find(query)
+        return self._indexCollection.find(query)
 
     def addToIndex(self, path, properties, server):
         toInsert = {"filename":os.path.basename(path), "path": path, "server": server, "properties": properties}
-        self.indexCollection.insert_one(toInsert)
+        self._indexCollection.insert_one(toInsert)
 
     def removeFromIndexByMongoQuery(self, query):
-        self.indexCollection.delete_one(query)
+        self._indexCollection.delete_one(query)
 
     def removeFromIndexByPath(self, path):
         self.removeFromIndexByMongoQuery({"path":path})

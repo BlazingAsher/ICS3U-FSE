@@ -9,8 +9,8 @@ MONGO_STRING = env("MONGO_STRING")
 SERVER_NAME = env("SERVER_NAME")
 MAGIC_FILE = env("MAGIC_FILE")
 FFPROBE = env("FFPROBE")
-fp = fi.Processor(magic=MAGIC_FILE, ffprobe=FFPROBE)
-fp.USE_FILE_EXT = False
+fp = fi.Processor(db=MONGO_STRING, magic=MAGIC_FILE, ffprobe=FFPROBE, server_name=SERVER_NAME)
+fp.loadSettings()
 
 fileIndex = fi.Index(db=MONGO_STRING)
 def populateProperties(path, options={}):
@@ -31,3 +31,5 @@ def createIndex(path, options={}):
     else:
         return fi.Response(400, "The path specified does not exist")
 
+def loadSettings():
+    fp.loadSettings()
