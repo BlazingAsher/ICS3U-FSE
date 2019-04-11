@@ -114,8 +114,7 @@ class Processor:
             additional = self._plugins[additionalPlugin](self, path)
         else:
             additional = {}
-        if not additional:
-            additional = {}
+
         return additional
 
     def getAllProperties(self, path):

@@ -16,6 +16,7 @@ fp.loadPlugins()
 fileIndex = fi.Index(db=MONGO_STRING)
 def populateProperties(path, options={}):
     try:
+        print("----------------------")
         fileIndex.addToIndex(path, fp.getAllProperties(path), SERVER_NAME)
     except OSError:
         return fi.Response(400, "The path specified is not a valid file")
