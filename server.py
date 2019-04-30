@@ -3,6 +3,7 @@ import FileIndexer as fi
 from environs import Env
 from multiprocessing.pool import ThreadPool
 import re
+import queue
 
 env = Env()
 env.read_env()
@@ -19,7 +20,7 @@ fp.loadSettings()
 fileIndex = fi.Index(db=MONGO_STRING)
 
 tp =  ThreadPool(16)
-exclusions = [".*node_modules.*"]
+exclusions = ["node_modules", "\.git"]
 exclusionsCompiled = [re.compile(exp) for exp in exclusions]
 
 def populateProperties(path, options={}):
@@ -32,24 +33,29 @@ def populateProperties(path, options={}):
 def createIndex(path, options={}):
     allPaths = []
     if os.path.isdir(path):
-        for root, dirs, files in os.walk(path):
-            #print(root,dirs,files)
-            # Check if the root matches any exclusions, if so, skip it
-            for exclu in exclusionsCompiled:
-                if exclu.match(root):
-                    print("out",root)
-                    continue
-            for subject in files+dirs:
-                excluded = False
-                for exclu in exclusionsCompiled:
-                    #print(os.path.join(root,subject))
-                    if exclu.match(os.path.join(root, subject)):
-                        #print("skip",os.path.join(root, subject))
-                        excluded = True
-                        break
-                if not excluded:
-                    #print("go")
-                    allPaths.append(os.path.join(root, subject))
+        fqueue = queue.Queue()
+        dqueue = queue.Queue()
+        fqueue.put(path)
+        dqueue.put(0)
+        while not fqueue.empty():
+            item = fqueue.get()
+            cdepth = dqueue.get()
+            if cdepth <= MAX_RECURSION_DEPTH:
+                children = os.listdir(item)
+                for child in children:
+                    cfullpath = os.path.join(item,child)
+                    if os.path.isdir(cfullpath):
+                        excluded = False
+                        for exclu in exclusionsCompiled:
+                            if exclu.search(cfullpath):
+                                excluded = True
+                                break
+                        if not excluded:
+                            fqueue.put(os.path.join(item,child))
+                            dqueue.put(cdepth+1)
+                            allPaths.append(os.path.join(item,child))
+            else:
+                break
                     
         for path in allPaths:
             tp.apply_async(populateProperties, args=(path,))
