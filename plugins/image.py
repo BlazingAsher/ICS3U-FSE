@@ -5,6 +5,22 @@ def get_id():
 def get_handlers():
     return ["image\/.*"]
 
+def get_mappings():
+    imageMap = {
+        "jpg": "image/jpeg",
+        "png": "image/png"
+    }
+    return imageMap
+
+def get_default_settings():
+    defaultSettings = {
+        "image": {
+            "extended_exif": False,
+            "simple_exif_tags": ["DateTimeOriginal","Make","Model","Flash","UserComment","Software","DateTime","LensModel"]
+        }
+    }
+    return defaultSettings
+
 def plugin_main(self, path):
     print("Image!")
     # Open the image to get its attributes

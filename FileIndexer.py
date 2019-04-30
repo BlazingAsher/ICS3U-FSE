@@ -13,7 +13,6 @@ class Response:
 class Processor:
     def __init__(self, **kwargs):
         self.magic = kwargs.get("magic")
-        self.ffprobe = kwargs.get("ffprobe")
         self.SERVER_NAME = kwargs.get("server_name")
         self.mime = magic.Magic(mime=True, magic_file=self.magic)
         
@@ -26,34 +25,23 @@ class Processor:
 
     formatMap = {}
 
-    extMap = {
-        "jpg": "image/jpeg",
-        "png": "image/png"
-    }
+    extMap = {}
 
     compiledMatches = {}
+    defaultSettings = {
+        "name": "global",
+        "crawler": {
+            "identify_by_extension": True
+        }
+    }
 
     def loadSettings(self):
         self._settings = self._settingscol.find_one({"name":"global"})
         if self._settings is None:
             print("Generating default settings")
-            defaultSettings = {
-                "name": "global",
-                "crawler" : {
-                        "identify_by_extension": True
-                    },
-                "image": {
-                        "extended_exif": False,
-                        "simple_exif_tags": ["DateTimeOriginal","Make","Model","Flash","UserComment","Software","DateTime","LensModel"]
-                    },
-                "video": {
-                        "extended_videodata": False,
-                        "simple_video_tags": ["container", "duration","bitrate","haveVideo","haveAudio","videoCodec","videoWidth","videoHeight","audicCodec"]
-                    }
-                }
             #PUSH TO SERVER AND SET LOCAL
-            self._settingscol.insert(defaultSettings)
-            self._settings = defaultSettings
+            self._settingscol.insert(self.defaultSettings)
+            self._settings = self.defaultSettings
 
     def loadPlugins(self):
         # This will inject a plugin's code into this class
@@ -67,6 +55,8 @@ class Processor:
                 handlers = eval("plugin.%s.get_handlers()"%pluginBasename)
                 for handler in handlers:
                     self.formatMap[handler] = plugID
+                self.extMap.update(eval("plugin.%s.get_mappings()"%pluginBasename))
+                self.defaultSettings.update(eval("plugin.%s.get_default_settings()"%pluginBasename))
 
         self.compiledMatches = self.compileExpressions(self.formatMap.keys())
         
@@ -75,7 +65,7 @@ class Processor:
     
     def extToMime(self, ext):
         ext = ext.lower()
-        print(ext)
+        #print(ext)
         try:
             return self.extMap[ext]
         except KeyError:
@@ -89,10 +79,15 @@ class Processor:
         return self.compiledMatches
     
     def dictKeyRegEx(self, dic, strToMatch):
-        # THIS WILL ONLY RETURN THE FIRST OCCURANCE
+        # Prefer an exact match
+        matchedReg = ""
         for reg in self.compiledMatches:
-            if reg[1].match(strToMatch):
+            if reg[0].replace("\/","/") == strToMatch:
                 return dic[reg[0]]
+            elif reg[1].match(strToMatch):
+                matchedReg = reg[0]
+
+        return dic[matchedReg] if len(matchedReg) > 0 else None
             
     def getAllExtended(self, path):
         ext = path[path.rfind(".")+1:].lower()
@@ -104,12 +99,12 @@ class Processor:
             
         if mime == "none/none":
             # try to get mime information
-            print("thru mime")
+            #print("thru mime")
             mime = self.mime.from_file(path)
-        print(mime)
+        #print(mime)
         # Potential logic change needed here
         additionalPlugin = self.dictKeyRegEx(self.formatMap, mime)
-        print("to plugin",additionalPlugin)
+        #print("to plugin",additionalPlugin)
         if additionalPlugin:
             additional = self._plugins[additionalPlugin](self, path)
         else:
@@ -120,9 +115,14 @@ class Processor:
     def getAllProperties(self, path):
         if os.path.isfile(path):
             properties = {}
+            properties["type"] = "file"
             properties["lastmod"] = os.path.getmtime(path)
             properties["size"] = os.path.getsize(path)
             properties["additional"] = self.getAllExtended(path)
+            return properties
+        elif os.path.isdir(path):
+            properties = {}
+            properties["type"] = "folder"
             return properties
         else:
             raise OSError
@@ -145,7 +145,7 @@ class Index:
         return self._indexCollection.find(query)
 
     def addToIndex(self, path, properties, server):
-        toInsert = {"filename":os.path.basename(path), "path": path, "server": server, "properties": properties}
+        toInsert = {"subject":os.path.basename(path), "path": path, "server": server, "properties": properties}
         self._indexCollection.insert_one(toInsert)
 
     def removeFromIndexByMongoQuery(self, query):
