@@ -1,9 +1,13 @@
+from flask import Flask
+from flask import Response
 import os
 import FileIndexer as fi
 from environs import Env
 from multiprocessing.pool import ThreadPool
 import re
 import queue
+
+app = Flask(__name__)
 
 env = Env()
 env.read_env()
@@ -53,24 +57,27 @@ def createIndex(path, options={}):
             cdepth = dqueue.get()
             # Check if maximum recursion depth has been reached
             if cdepth <= MAX_RECURSION_DEPTH:
-                children = os.listdir(item)
-                # Loop through children (make sure the file/directory still exists before performing action)
-                for child in children:
-                    cfullpath = os.path.join(item,child)
-                    if os.path.exists(cfullpath):
-                        # Loop through the exclusions to check if we need to even process the file
-                        excluded = False
-                        for exclu in exclusionsCompiled:
-                            if exclu.search(cfullpath):
-                                excluded = True
-                                break
-                        if not excluded:
-                            # If it is a directory, add it to the back of the queue
-                            if os.path.isdir(cfullpath):
-                                fqueue.put(os.path.join(item,child))
-                                dqueue.put(cdepth+1)
-                            # Add to the list of files/directories to be processed
-                            allPaths.append(os.path.join(item,child))
+                try:
+                    children = os.listdir(item)
+                    # Loop through children (make sure the file/directory still exists before performing action)
+                    for child in children:
+                        cfullpath = os.path.join(item,child)
+                        if os.path.exists(cfullpath):
+                            # Loop through the exclusions to check if we need to even process the file
+                            excluded = False
+                            for exclu in exclusionsCompiled:
+                                if exclu.search(cfullpath):
+                                    excluded = True
+                                    break
+                            if not excluded:
+                                # If it is a directory, add it to the back of the queue
+                                if os.path.isdir(cfullpath):
+                                    fqueue.put(os.path.join(item,child))
+                                    dqueue.put(cdepth+1)
+                                # Add to the list of files/directories to be processed
+                                allPaths.append(os.path.join(item,child))
+                except PermissionError:
+                    pass
             else:
                 break
                     
@@ -81,8 +88,19 @@ def createIndex(path, options={}):
         # Cleanup thread pool
         tp.close()
         tp.join()
+        return fi.Response(200, "{\"message\":\"OK\"}")
     else:
-        return fi.Response(400, "The path specified does not exist or is not a directory")
+        return fi.Response(400, "{\"error\":\"The path specified does not exist or is not a directory\"}")
 
 def loadSettings():
     fp.loadSettings()
+
+@app.route("/")
+def r_home():
+    return "No command"
+
+@app.route("/index/create", methods=['POST'])
+def r_createIndex():
+    req_data = request.get_json()
+    result = createIndex(req_data["path"])
+    return Response(result.message, status=result.code, mimetype="application/json")

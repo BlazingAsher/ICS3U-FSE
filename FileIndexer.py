@@ -44,18 +44,23 @@ class Processor:
             self._settings = self.defaultSettings
 
     def loadPlugins(self):
-        # This will inject a plugin's code into this class
+        # This will load plugins from the plugins directory
         pluginList = [x for x in os.listdir("plugins") if x[x.rfind(".")+1:].lower() == "py"]
         for pluginFile in pluginList:
             if pluginFile != "__init__.py":
+                # Get all the plugin's information
                 pluginBasename = pluginFile[:pluginFile.rfind(".")]
                 plugin = __import__("plugins."+pluginBasename)
                 plugID = eval("plugin.%s.get_id()"%pluginBasename)
                 self._plugins[plugID] = eval("plugin."+pluginBasename+".plugin_main")
                 handlers = eval("plugin.%s.get_handlers()"%pluginBasename)
+                
+                # Register the plugin as a handler for the file type
                 for handler in handlers:
                     self.formatMap[handler] = plugID
+                # Add any additional ext to format mappings to the central map
                 self.extMap.update(eval("plugin.%s.get_mappings()"%pluginBasename))
+                # Add any additional settings to the global settings
                 self.defaultSettings.update(eval("plugin.%s.get_default_settings()"%pluginBasename))
 
         self.compiledMatches = self.compileExpressions(self.formatMap.keys())
@@ -102,7 +107,7 @@ class Processor:
             #print("thru mime")
             mime = self.mime.from_file(path)
         #print(mime)
-        # Potential logic change needed here
+        # Get the plugin that is registered to handle the file type
         additionalPlugin = self.dictKeyRegEx(self.formatMap, mime)
         #print("to plugin",additionalPlugin)
         if additionalPlugin:
