@@ -137,17 +137,20 @@ class Index:
         self._db = self._client.fileindexer
         self._indexCollection = self._db.index
     
-    def deleteIndex(self):
-        self._indexCollection.drop()
+    def clearIndex(self):
+        self._indexCollection.delete_many({})
 
     def getAll(self):
-        return self._indexCollection.delete_many({})
+        return self._indexCollection.find({})
 
     def getOneByQuery(self, query):
         return self._indexCollection.find_one(query)
 
     def getAllByQuery(self, query):
         return self._indexCollection.find(query)
+
+    def getIndexSize(self):
+        return self._indexCollection.count()
 
     def addToIndex(self, path, properties, server):
         toInsert = {"subject":os.path.basename(path), "path": path, "server": server, "properties": properties}

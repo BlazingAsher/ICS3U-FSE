@@ -153,7 +153,7 @@ def r_jobcancel(jobid):
     finally:
         job_status_lock.release()
     
-@app.route("/index/create/", methods=['POST'])
+@app.route("/index/", methods=['POST'])
 def r_createIndex():
     global job_status
     req_data = request.get_json()
@@ -163,7 +163,3 @@ def r_createIndex():
         return jsonify({"code": 200, "message": "Job created", "jobid": "build"})
     else:
         return jsonify({"code": 400, "error": "An index is currently being built"})
-            
-@app.route("/index/clear/")
-def r_clearIndex():
-    return
