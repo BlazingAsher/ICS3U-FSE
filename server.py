@@ -1,11 +1,13 @@
-from flask import Flask
-from flask import Response
+from flask import Flask, request, Response, jsonify
 import os
 import FileIndexer as fi
 from environs import Env
 from multiprocessing.pool import ThreadPool
 import re
 import queue
+import threading
+import uuid
+import json
 
 app = Flask(__name__)
 
@@ -28,18 +30,40 @@ tp =  ThreadPool(16)
 
 exclusions = ["node_modules", "\.git"]
 
+# Store async jobs
+jobs = []
+
+# Index build status (current,total)
+job_status = {"build":{"completed": 0,"total": 0, "state": "OK", "additional": "Not initialized","cancelled": True}}
+job_status_lock = threading.Lock()
+
 # Compile all the user's expressions
 # TODO: ERROR HANDLING
 exclusionsCompiled = [re.compile(exp) for exp in exclusions]
 
 def populateProperties(path, options={}):
-    try:
-        #print("----------------------")
-        fileIndex.addToIndex(path, fp.getAllProperties(path), SERVER_NAME)
-    except OSError:
-        return fi.Response(400, "The path specified is not a valid file")
+    global job_status
+    if not job_status["build"]["cancelled"]:
+        try:
+            #print("----------------------")
+            job_status_lock.acquire()
+            print("lock acquire")
+            try:
+                job_status["build"]["completed"] += 1
+            finally:
+                job_status_lock.release()
+            print("lock release")
+            fileIndex.addToIndex(path, fp.getAllProperties(path), SERVER_NAME)
+        except OSError:
+            pass
+        return
+            #return fi.Response(400, "The path specified is not a valid file")
+    else:
+        print("cancelled")
+        return
     
 def createIndex(path, options={}):
+    global job_status
     allPaths = []
     if os.path.isdir(path):
         # Create a path queue and a depth queue to keep track of node depth
@@ -80,7 +104,9 @@ def createIndex(path, options={}):
                     pass
             else:
                 break
-                    
+
+        print("list done")
+        job_status["build"] = {"completed": 0,"total": len(allPaths),"state": "OK","additional": "File-tree built","cancelled": False}
         for path in allPaths:
             # Assign a new task to populate properties of the file/directory to the thread pool
             tp.apply_async(populateProperties, args=(path,))
@@ -88,19 +114,56 @@ def createIndex(path, options={}):
         # Cleanup thread pool
         tp.close()
         tp.join()
-        return fi.Response(200, "{\"message\":\"OK\"}")
+        print("done")
+        job_status["build"]["state"] = "OK"
+        job_status["build"]["additional"] = "Done"
+        return
     else:
-        return fi.Response(400, "{\"error\":\"The path specified does not exist or is not a directory\"}")
-
+        job_status["build"]["state"] = "ERROR"
+        job_status["build"]["additional"] = "The path given does not exist or is not a directory"
+        return
+              
 def loadSettings():
     fp.loadSettings()
 
 @app.route("/")
 def r_home():
-    return "No command"
+    return jsonify({"code": 400, "error": "No command"})
 
-@app.route("/index/create", methods=['POST'])
+@app.route("/job/")
+def r_listjob():
+    return jsonify({"code": 200, "jobs": job_status})
+
+@app.route("/job/<jobid>/")
+def r_jobstat(jobid):
+    try:
+        job = job_status[jobid]
+        return jsonify({"code": 200, "status": job})
+    except KeyError:
+        return jsonify({"code": 400, "error": "Job ID not found"})
+
+@app.route("/job/<jobid>/cancel/")
+def r_jobcancel(jobid):
+    try:
+        job_status_lock.acquire()
+        job_status[jobid]["cancelled"] = True
+        return jsonify({"code": 200, "message": "Job cancelled"})
+    except KeyError:
+        return jsonify({"code": 400, "error": "Job ID not found"})
+    finally:
+        job_status_lock.release()
+    
+@app.route("/index/create/", methods=['POST'])
 def r_createIndex():
+    global job_status
     req_data = request.get_json()
-    result = createIndex(req_data["path"])
-    return Response(result.message, status=result.code, mimetype="application/json")
+    if job_status["build"]["total"] - job_status["build"]["completed"] == 0:
+        thread = threading.Thread(target = createIndex, args = (req_data["path"],))
+        thread.start()
+        return jsonify({"code": 200, "message": "Job created", "jobid": "build"})
+    else:
+        return jsonify({"code": 400, "error": "An index is currently being built"})
+            
+@app.route("/index/clear/")
+def r_clearIndex():
+    return

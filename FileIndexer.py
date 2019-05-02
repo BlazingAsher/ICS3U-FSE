@@ -141,7 +141,7 @@ class Index:
         self._indexCollection.drop()
 
     def getAll(self):
-        return self._indexCollection.find()
+        return self._indexCollection.delete_many({})
 
     def getOneByQuery(self, query):
         return self._indexCollection.find_one(query)
