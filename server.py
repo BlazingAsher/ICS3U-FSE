@@ -8,6 +8,7 @@ import queue
 import threading
 import uuid
 import json
+import requests
 
 app = Flask(__name__)
 
@@ -17,7 +18,10 @@ env.read_env()
 MAX_RECURSION_DEPTH = 999999999
 MONGO_STRING = env("MONGO_STRING")
 SERVER_NAME = env("SERVER_NAME")
+SERVER_URL = env("SERVER_URL")
 MAGIC_FILE = env("MAGIC_FILE")
+CONTROLLER_URL = env("CONTROLLER_URL")
+CONTROLLER_SECRET = env("CONTROLLER_SECRET")
 
 fp = fi.Processor(db=MONGO_STRING, magic=MAGIC_FILE, server_name=SERVER_NAME)
 fp.loadPlugins()
@@ -125,6 +129,11 @@ def createIndex(path, options={}):
               
 def loadSettings():
     fp.loadSettings()
+
+key = requests.post(CONTROLLER_URL+"/authenticate",data=json.dumps({secret: CONTROLLER_SECRET, server: SERVER_NAME, url: SERVER_URL}))
+print(key)
+# Register with the controller
+#requests.get(CONTROLLER_URL+"
 
 @app.route("/")
 def r_home():
