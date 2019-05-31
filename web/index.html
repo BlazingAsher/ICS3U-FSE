@@ -159,7 +159,28 @@
 <script>
 var card = '<div class="card hovercard"><div class="card-body"><h5 class="card-title">document.docx</h5><p class="card-text">With supporting text below as a natural lead-in to additional content.</p></div></div><div class="spacer"></div>';
 
+
+function assembleCard(title, path){
+	return '<div class="card hovercard"><div class="card-body"><h5 class="card-title">' + title +'</h5><p class="card-text">' + path +'</p></div></div><div class="spacer"></div>';
+}
 $(function (){
+var query = {"operation": "getAll"}
+ $.ajax({
+        url: "http://127.0.0.1:5000/query/",
+        data: JSON.stringify(query),
+        contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+        type: 'POST',
+        success: function (data) {
+			console.log(data);
+			
+            for (var i=0;i<data.data.length;i++){
+				if(data.data.properties["type"] == "file"){
+					$("#results").append(assembleCard(data.data[i]["subject"], data.data[i]["path"]));
+				}
+			}
+        }
+    });
 	for (var i=0;i<10;i++){
 		$("#results").append(card);
 	}

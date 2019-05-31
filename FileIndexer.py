@@ -140,14 +140,16 @@ class Index:
     def clearIndex(self):
         self._indexCollection.delete_many({})
 
-    def getAll(self):
-        return self._indexCollection.find({})
+    def getAll(self, page_size, page_num):
+        skips = page_size * (page_num - 1)
+        return self._indexCollection.find({}).skip(skips).limit(page_size)
 
     def getOneByQuery(self, query):
         return self._indexCollection.find_one(query)
 
-    def getAllByQuery(self, query):
-        return self._indexCollection.find(query)
+    def getAllByQuery(self, query, page_size, page_num):
+        skips = page_size * (page_num - 1)
+        return self._indexCollection.find(query).skip(skips).limit(page_size)
 
     def getIndexSize(self):
         return self._indexCollection.count()

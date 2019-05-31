@@ -4,14 +4,18 @@ import jwt
 import FileIndexer as fi
 from environs import Env
 from bson.json_util import dumps
+import json
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 env = Env()
 env.read_env()
 
 SERVER_SECRET = "testing"
 
 MONGO_STRING = env("MONGO_STRING")
+DEFAULT_PAGE_SIZE = 25
 JWT_SECRET = "a very long and complicated string"
 heartbeat = {}
 
@@ -86,10 +90,31 @@ def r_query():
     try:
         operation = rbody["operation"]
         if operation == "getAll":
-            return jsonify({"code": 200, "data": list(fileIndex.getAll())})
+            try:
+                page = rbody["page"]
+            except KeyError:
+                page = 1
+            try:
+                page_size = rbody["page_size"]
+            except KeyError:
+                page_size = DEFAULT_PAGE_SIZE
+            return jsonify({"code": 200, "page": page, "page_size": page_size, "data": json.loads(dumps(fileIndex.getAll(page_size, page)))})
+
         if operation == "getOneByQuery":
             query = rbody["query"]
-            return jsonify({"code": 200, "data": {key:doc for key,doc in fileIndex.getOneByQuery(query).items()}})
+            return jsonify({"code": 200, "data": json.loads(dumps(fileIndex.getOneByQuery(query)))})
+
+        if operation == "getAllByQuery":
+            query = rbody["query"]
+            try:
+                page = rbody["page"]
+            except KeyError:
+                page = 1
+            try:
+                page_size = rbody["page_size"]
+            except KeyError:
+                page_size = DEFAULT_PAGE_SIZE
+            return jsonify({"code": 200, "data": json.loads(dumps(fileIndex.getAllByQuery(query, page_size, page)))})
     except KeyError:
         return jsonify({"code": 400, "error": "Invalid request"})
     
