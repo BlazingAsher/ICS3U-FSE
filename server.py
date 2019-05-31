@@ -130,8 +130,8 @@ def createIndex(path, options={}):
 def loadSettings():
     fp.loadSettings()
 
-key = requests.post(CONTROLLER_URL+"/authenticate",data=json.dumps({secret: CONTROLLER_SECRET, server: SERVER_NAME, url: SERVER_URL}))
-print(key)
+#key = requests.post(CONTROLLER_URL+"/authenticate",data=json.dumps({"secret": CONTROLLER_SECRET, "server": SERVER_NAME, "url": SERVER_URL}))
+#print(key)
 # Register with the controller
 #requests.get(CONTROLLER_URL+"
 

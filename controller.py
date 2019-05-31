@@ -1,12 +1,21 @@
 from flask import Flask,request,jsonify
 from datetime import datetime,timedelta
 import jwt
+import FileIndexer as fi
+from environs import Env
+from bson.json_util import dumps
 
 app = Flask(__name__)
+env = Env()
+env.read_env()
 
 SERVER_SECRET = "testing"
+
+MONGO_STRING = env("MONGO_STRING")
 JWT_SECRET = "a very long and complicated string"
 heartbeat = {}
+
+fileIndex = fi.Index(db=MONGO_STRING)
 
 def isAuthenticated(request):
     try:
@@ -70,4 +79,18 @@ def r_removeserver():
         except KeyError:
             return jsonify({"code": 400, "error": "Invalid request"})
         return jsonify({"code": 200, "message": "OK"})
+
+@app.route('/query/', methods=['POST'])
+def r_query():
+    rbody = request.get_json()
+    try:
+        operation = rbody["operation"]
+        if operation == "getAll":
+            return jsonify({"code": 200, "data": list(fileIndex.getAll())})
+        if operation == "getOneByQuery":
+            query = rbody["query"]
+            return jsonify({"code": 200, "data": {key:doc for key,doc in fileIndex.getOneByQuery(query).items()}})
+    except KeyError:
+        return jsonify({"code": 400, "error": "Invalid request"})
+    
 
