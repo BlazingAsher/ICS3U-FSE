@@ -114,7 +114,7 @@ def r_query():
                 page_size = rbody["page_size"]
             except KeyError:
                 page_size = DEFAULT_PAGE_SIZE
-            return jsonify({"code": 200, "data": json.loads(dumps(fileIndex.getAllByQuery(query, page_size, page)))})
+            return jsonify({"code": 200, "page": page, "page_size": page_size, "data": json.loads(dumps(fileIndex.getAllByQuery(query, page_size, page)))})
     except KeyError:
         return jsonify({"code": 400, "error": "Invalid request"})
     

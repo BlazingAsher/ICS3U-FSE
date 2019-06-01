@@ -31,6 +31,7 @@
 
 <body>
 
+<div style="position: relative; min-height: 100vh">
   <!-- Navigation -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
     <div class="container">
@@ -74,16 +75,18 @@
 	<div class="card my-4">
           <div class="card-body">
             <div class="input-group">
-              <input type="text" class="form-control" placeholder="Search for...">
+              <input type="text" class="form-control" placeholder="Search for..." id="searchQuery" selected>
               <span class="input-group-btn">
-                <button class="btn btn-secondary" type="button">Go!</button>
+                <button class="btn btn-secondary" type="button" id="searchBtn">Go!</button>
               </span>
             </div>
+			
           </div>
         </div>
 
         <hr>
 		<div id="results">
+		No results.
 		</div>
 
         <hr>
@@ -130,9 +133,20 @@
 
         <!-- Side Widget -->
         <div class="card my-4">
-          <h5 class="card-header">Side Widget</h5>
+          <h5 class="card-header">Search Options</h5>
           <div class="card-body">
-            You can put anything you want inside of these side widgets. They are easy to use, and feature the new Bootstrap 4 card containers!
+            <div style="margin-top: 0.5em;">
+			Search in: 
+				<input type="radio" id="radio1" name="searchIn" value="filename" checked>
+				<label for="radio1">Filename</label>
+				<input type="radio" id="radio2" name="searchIn" value="path">
+				<label for="radio2">Path</label>
+			</div>
+			<div style="margin-top: 0.5em;">
+				Files Only: 
+				<input type="checkbox" id="check1" name="searchIn" value="filename" checked>
+				<label for="check1">Filename</label>
+			</div>
           </div>
         </div>
 
@@ -145,13 +159,13 @@
   <!-- /.container -->
 
   <!-- Footer -->
-  <footer class="py-5 bg-dark">
+  <footer class="py-5 bg-dark" style="margin-top: 7em">
     <div class="container">
       <p class="m-0 text-center text-white">Copyright &copy; 2019 David Hui and Sat Arora</p>
     </div>
     <!-- /.container -->
   </footer>
-
+</div>
   <!-- Bootstrap core JavaScript -->
   <script src="vendor/jquery/jquery.min.js"></script>
   <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -159,13 +173,112 @@
 <script>
 var card = '<div class="card hovercard"><div class="card-body"><h5 class="card-title">document.docx</h5><p class="card-text">With supporting text below as a natural lead-in to additional content.</p></div></div><div class="spacer"></div>';
 
+var currPage = 1;
+var pageSize = 25;
+var showFolders = false;
+
+function getNext(){
+	var query = makeRequest(currPage+1, pageSize);
+	makeQuery(query, "next");
+	
+}
+
+function getPrev(){
+	if(currPage > 1){
+		var query = makeRequest(currPage-1, pageSize);
+		makeQuery(query, "prev");
+	}
+	
+}
+
+function procNext(data){
+	if(data.data.length > 0){
+		injectResults(data);
+	}
+	else{
+		currPage--;
+	}
+}
+
+function procPrev(data){
+	injectResults(data);
+}
 
 function assembleCard(title, path){
 	return '<div class="card hovercard"><div class="card-body"><h5 class="card-title">' + title +'</h5><p class="card-text">' + path +'</p></div></div><div class="spacer"></div>';
 }
+
+function injectResults(data){
+	$("#results").empty();
+	if(data.data.length > 0){
+		for (var i=0;i<data.data.length;i++){
+			$("#results").append(assembleCard(data.data[i]["subject"], data.data[i]["path"]));
+		}
+		
+		
+		if(currPage > 1){
+			$("#results").append('<button class="btn btn-secondary" type="button" id="searchBtn" onclick="getPrev()" style="margin-right: 1em"><< Prev</button>');
+		}
+		if(data.data.length >= data["page_size"]){
+			$("#results").append('<button class="btn btn-secondary" type="button" id="searchBtn" onclick="getNext()">Next >></button>');
+		}
+		
+		
+	}
+	else{
+		$("#results").append("No results.");
+	}
+	
+	
+}
+
+function makeRequest(page=1, page_size=25){
+	currPage = page;
+	pageSize = page_size;
+	console.log(currPage);
+	var searchIn = $('input[name=searchIn]:checked').val();
+	var query = {"operation": "getAllByQuery", "page": page, "page_size": page_size, "query": {"$and":[]}}
+	if(searchIn == "path"){
+		query["query"]["$and"].push({"path": {"$regex": $("#searchQuery").val()}});
+	}
+	else if(searchIn = "filename"){
+		query["query"]["$and"].push({"subject": {"$regex": $("#searchQuery").val()}});
+	}
+	
+	if(!showFolders){
+		query["query"]["$and"].push({"properties.type": "file"});
+	}
+	return query;
+}
+
+function makeQuery(query, nextFunc="inject"){
+	
+	$.ajax({
+		url: "http://127.0.0.1:5000/query/",
+		data: JSON.stringify(query),
+		contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+		type: 'POST',
+		success: function (data) {
+			if(nextFunc == "inject"){
+				injectResults(data);
+			}
+			else if(nextFunc == "next"){
+				procNext(data);
+			}
+			else if(nextFunc == "prev"){
+				procPrev(data);
+			}
+		}
+	});
+}
+
 $(function (){
-var query = {"operation": "getAll"}
- $.ajax({
+	$("#searchQuery").select();
+
+/*
+	var query = {"operation": "getAll"}
+	$.ajax({
         url: "http://127.0.0.1:5000/query/",
         data: JSON.stringify(query),
         contentType: 'application/json; charset=utf-8',
@@ -174,15 +287,31 @@ var query = {"operation": "getAll"}
         success: function (data) {
 			console.log(data);
 			
-            for (var i=0;i<data.data.length;i++){
-				if(data.data.properties["type"] == "file"){
-					$("#results").append(assembleCard(data.data[i]["subject"], data.data[i]["path"]));
-				}
-			}
+            injectResults(data);
         }
-    });
-	for (var i=0;i<10;i++){
-		$("#results").append(card);
+    });*/
+	
+	$("#searchQuery").keypress(function (e){
+		var keycode = (e.keyCode ? e.keyCode : e.which);
+		if(keycode == '13'){
+			$("#searchBtn").click();
+		}
+	});
+	
+	$("#searchBtn").click(function (e){
+		e.preventDefault();
+		var query = makeRequest();
+		makeQuery(query);
+	});
+	
+});
+
+$("#check1").change(function (){
+	if(this.checked){
+		showFolders = false;
+	}
+	else{
+		showFolders = true;
 	}
 });
 </script>
