@@ -1,0 +1,12 @@
+#full {
+    background: rgb(10, 15, 43);
+    font-family: monospace;
+    color: white;
+}
+
+#def {
+    color: white;
+    position: absolute;
+    top: 100px;
+    left: 200px;
+}
