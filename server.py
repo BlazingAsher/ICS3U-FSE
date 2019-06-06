@@ -1,4 +1,4 @@
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response, jsonify, send_file
 import os
 import FileIndexer as fi
 from environs import Env
@@ -172,3 +172,12 @@ def r_createIndex():
         return jsonify({"code": 200, "message": "Job created", "jobid": "build"})
     else:
         return jsonify({"code": 400, "error": "An index is currently being built"})
+
+@app.route("/retrieve/", methods=['POST'])
+def r_retrieveFile():
+    req_data = request.get_json()
+    try:
+        path = req_data["path"]
+        return send_file(path, as_attachment=True)
+    except KeyError:
+        return jsonify({"code": 400, "error": "Invalid request"})
