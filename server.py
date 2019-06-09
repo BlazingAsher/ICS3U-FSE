@@ -9,8 +9,11 @@ import threading
 import uuid
 import json
 import requests
+import urllib.parse
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 env = Env()
 env.read_env()
@@ -173,11 +176,11 @@ def r_createIndex():
     else:
         return jsonify({"code": 400, "error": "An index is currently being built"})
 
-@app.route("/retrieve/", methods=['POST'])
-def r_retrieveFile():
+@app.route("/retrieve/<path>", methods=['GET'])
+def r_retrieveFile(path):
     req_data = request.get_json()
     try:
-        path = req_data["path"]
-        return send_file(path, as_attachment=True)
+        dpath = urllib.parse.unquote(path)
+        return send_file(dpath, as_attachment=True)
     except KeyError:
         return jsonify({"code": 400, "error": "Invalid request"})

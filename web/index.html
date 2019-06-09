@@ -143,9 +143,9 @@
 				<label for="radio2">Path</label>
 			</div>
 			<div style="margin-top: 0.5em;">
-				Files Only: 
+				<label for="check1">Files Only: </label>
 				<input type="checkbox" id="check1" name="searchIn" value="filename" checked>
-				<label for="check1">Filename</label>
+				
 			</div>
           </div>
         </div>
@@ -252,7 +252,6 @@ function makeRequest(page=1, page_size=25){
 }
 
 function makeQuery(query, nextFunc="inject"){
-	
 	$.ajax({
 		url: "http://127.0.0.1:5000/query/",
 		data: JSON.stringify(query),
