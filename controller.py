@@ -54,20 +54,16 @@ def r_heartbeat():
     if authStat[0]:
         rbody = request.get_json()
         try:
-            heartbeat[authStat["server"]] = [authStat["url"], int(datetime.today().timestamp())]
+            heartbeat[authStat[1]["server"]] = [authStat[1]["url"], int(datetime.today().timestamp())]
             return jsonify({"code": 200, "message": "Heartbeat registered"})
         except KeyError:
             return jsonify({"code": 400, "error": "Invalid request"})
     else:
         return authStat[1]
 
-@app.route('/server/', methods=['POST'])
+@app.route('/server/', methods=['GET'])
 def r_listservers():
-    authStat = isAuthenticated(request)
-    if authStat[0]:
-        return jsonify({"code": 200, "servers": heartbeat})
-    else:
-        return authStat[1]
+    return jsonify({"code": 200, "servers": heartbeat})
 
 @app.route('/server/remove/', methods=['POST'])
 def r_removeserver():
@@ -103,6 +99,10 @@ def r_query():
         if operation == "getOneByQuery":
             query = rbody["query"]
             return jsonify({"code": 200, "data": json.loads(dumps(fileIndex.getOneByQuery(query)))})
+
+        if operation == "getById":
+            oid = rbody["id"]
+            return jsonify({"code": 200, "data": json.loads(dumps(fileIndex.getById(oid)))[0]})
 
         if operation == "getAllByQuery":
             query = rbody["query"]

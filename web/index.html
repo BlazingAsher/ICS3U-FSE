@@ -204,15 +204,20 @@ function procPrev(data){
 	injectResults(data);
 }
 
-function assembleCard(title, path){
-	return '<div class="card hovercard"><div class="card-body"><h5 class="card-title">' + title +'</h5><p class="card-text">' + path +'</p></div></div><div class="spacer"></div>';
+function getFile(oid){
+	console.log(oid);
+	window.location.href = "file.html?id="+oid;
+}
+
+function assembleCard(id, title, path){
+	return '<div id="' + id + '" class="card hovercard" onclick="getFile(this.id)"><div class="card-body"><h5 class="card-title">' + title +'</h5><p class="card-text">' + path +'</p></div></div><div class="spacer"></div>';
 }
 
 function injectResults(data){
 	$("#results").empty();
 	if(data.data.length > 0){
 		for (var i=0;i<data.data.length;i++){
-			$("#results").append(assembleCard(data.data[i]["subject"], data.data[i]["path"]));
+			$("#results").append(assembleCard(data.data[i]["_id"]["$oid"], data.data[i]["subject"], data.data[i]["path"]));
 		}
 		
 		

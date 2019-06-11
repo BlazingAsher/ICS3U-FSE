@@ -73,19 +73,9 @@ footer {
     <div class="row">
 
       <!-- Post Content Column -->
-      <div class="col-lg-8">
-			<div style="margin-top: 1.5em; height:75vh;" >
-			<!--
-					<video id='my-video' class='video-js' controls preload='auto' width='640' height='264'
-			  poster='https://cdn.cnn.com/cnnnext/dam/assets/190319095624-20190319-google-game-controller-gfx-exlarge-169.jpg' data-setup='{}'>
-				<source src='MY_VIDEO.mp4' type='video/mp4'>
-				<source src='MY_VIDEO.webm' type='video/webm'>
-				<p class='vjs-no-js'>
-				  To view this video please enable JavaScript, and consider upgrading to a web browser that
-				  <a href='https://videojs.com/html5-video-support/' target='_blank'>supports HTML5 video</a>
-				</p>
-			  </video>-->
-			  <iframe id="pdfsrc" width='100%' height="100%"></iframe>
+      <div class="col-lg-8" >
+			<div style="margin-top: 1.5em; height:75vh;" id="fileview">
+			
 			  </div>
       </div>
 
@@ -132,11 +122,7 @@ footer {
           <h5 class="card-header">Actions</h5>
           <div class="card-body">
             <div style="margin-top: 0.5em;">
-			Search in: 
-				<input type="radio" id="radio1" name="searchIn" value="filename" checked>
-				<label for="radio1">Filename</label>
-				<input type="radio" id="radio2" name="searchIn" value="path">
-				<label for="radio2">Path</label>
+			<a id="downloadfile" href="" download>Download File</a>
 			</div>
 			<div style="margin-top: 0.5em;">
 				<label for="check1">Files Only: </label>
@@ -167,8 +153,8 @@ footer {
   <!-- Bootstrap core JavaScript -->
   <script src="vendor/jquery/jquery.min.js"></script>
   <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-
 <script src="https://vjs.zencdn.net/7.5.4/video.js"></script>
+
 <script>
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
@@ -179,12 +165,103 @@ function get(name){
 $(function (){
 var fileID = get('id');
 var token = get('token');
+
+query = {"operation": "getById", "id": fileID};
+console.log(query)
+
+function getFileType(filename){
+	filename = filename.toLowerCase();
+	var extension = filename.split('.').pop();
+	var types = {
+		"png": ["image", "nothing"],
+		"jpg": ["image", "nothing"],
+		"img": ["image", "nothing"],
+		"mp4": ["video", "video/mp4"],
+		"webm": ["video", "video/webm"],
+		"ogg": ["video", "video/ogg"],
+		"pdf": ["pdf", "nothing"],
+		"mp3": ["audio", "audio/mpeg"],
+		"wav": ["audio", "audio/wav"],
+		"txt": ["plaintext", "nothing"]
+	};
+	type = types[extension]
+	if (type === undefined){
+		type = "unknown"
+	}
+	return type
+}
+
+function generateMediaComponent(src, type, add){
+	if(type == "video"){
+		var eleVid = `<video id="my-video" class="video-js" controls preload="auto" width="640" height="264"
+			   data-setup="{}">
+				<source src="${src}" type="${add}">
+				<p class="vjs-no-js">
+				  To view this video please enable JavaScript, and consider upgrading to a web browser that
+				  <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+				</p>
+			  </video>`;
+		$("#fileview").append(eleVid);
+		videojs('my-video');
+	}
+	else if(type == "audio"){
+		var eleAud = `<audio controls>
+			  <source src="${src}" type="${add}">
+			Your browser does not support the audio element.
+			</audio>`;
+		$("#fileview").append(eleAud);
+	}
+	else if(type == "image"){
+		var eleImg = `<img src="$(src)" width="100%">`;
+		$("#fileview").append(eleImg);
+	}
+	else if(type == "pdf"){
+		var elePdf = `<iframe id="pdfsrc" width='100%' height="100%"></iframe>`;
+		$("#fileview").append(elePdf);
+		$("#pdfsrc").attr("src", "pdfjs/viewer.html?file="+encodeURIComponent(src));
+	}
+	else if(type == "plaintext"){
+		
+	}
+	else {
+		$("#fileview").append("<h2>Unable to preview this file</h2>");
+	}
+}
+
+
+//generateMediaComponent("MY_VIDEO.mp4", "video", "video/mp4");
+$.ajax({
+		url: "http://127.0.0.1:5000/query/",
+		data: JSON.stringify(query),
+		contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+		type: 'POST',
+		success: function (data) {
+			var fileInfo = data.data;
+			$.ajax({
+				url: "http://127.0.0.1:5000/server/",
+				type: 'GET',
+				success: function (data2) {
+					console.log(data2);
+					console.log(data2.servers[fileInfo.server]);
+					var serverAddress = data2.servers[fileInfo.server][0]
+					var requestUrl = serverAddress + "/retrieve/" + encodeURIComponent(fileInfo.path);
+					console.log(requestUrl);
+					var fileMetadata = getFileType(fileInfo.subject);
+					generateMediaComponent(requestUrl, fileMetadata[0], fileMetadata[1]);	
+					$("#downloadfile").attr("href", requestUrl);
+				}
+			});
+			//console.log(data);
+		}
+	});
 // retrieve url from DB
-	var pdfUrl = "http://127.0.0.1:3000/retrieve/C%3A%5CUsers%5CDavid%5CDocuments%5CGit%20Projects%5CICS3U%20FSE%5Cweb%5Cpdfjs%5Ccompressed.tracemonkey-pldi-09.pdf"
-	var reqUrl = encodeURIComponent(pdfUrl);
-	$("#pdfsrc").attr("src", "pdfjs/viewer.html?file="+reqUrl);
+	//var pdfUrl = "http://127.0.0.1:3000/retrieve/D%3A%5CDownloads%5C5.0-Function-Assignment.pdf"
+	//var reqUrl = encodeURIComponent(pdfUrl);
+	
 });
 </script>
+
 </body>
 
 </html>
