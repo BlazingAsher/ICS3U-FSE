@@ -6,6 +6,8 @@ from environs import Env
 from bson.json_util import dumps
 import json
 from flask_cors import CORS
+import pymongo
+from passlib.hash import sha256_crypt
 
 app = Flask(__name__)
 CORS(app)
@@ -20,6 +22,7 @@ JWT_SECRET = "a very long and complicated string"
 heartbeat = {}
 
 fileIndex = fi.Index(db=MONGO_STRING)
+userdb = pymongo.MongoClient(MONGO_STRING).fileindexer.users
 
 def isAuthenticated(request):
     try:
@@ -79,6 +82,39 @@ def r_removeserver():
         except KeyError:
             return jsonify({"code": 400, "error": "Invalid request"})
         return jsonify({"code": 200, "message": "OK"})
+
+@app.route('/share/', methods=['POST'])
+def r_share():
+    rbody = request.get_json()
+    oid = rbody["id"]
+    token = jwt.encode({'scope': oid},JWT_SECRET)
+    return token
+
+@app.route('/createuser/'), methods=['POST'])
+def r_createuser():
+    rbody = request.get_json()
+    username = rbody["username"]
+    password = rbody["password"]
+    userdb.insert_one({"username": username, "password": sha256_crypt.encrypt(password)})
+    return jsonify({"code": 200, "message": "OK"})
+
+@app.route('/userauth/', methods=['POST'])
+def r_userauth():
+    rbody = request.get_json()
+    username = rbody["username"]
+    password = rbody["password"]
+    users = userdb.find_one({"username": username})
+    triggered = False
+    for user in users:
+        if not triggered:
+            pwdhash = user["password"]
+            if sha256_crypt.verify(password, pwdhash):
+                token = jwt.encode({'scope': 'all', 'exp': datetime.utcnow() + timedelta(hours=12)},JWT_SECRET)
+                return jsonify({"code": 200, "token": token})
+            else:
+                return jsonify({"code": 401, "error": "Not authorized"})
+        triggered = True
+    return jsonify({"code": 401, "error": "Not authorized"})
 
 @app.route('/query/', methods=['POST'])
 def r_query():

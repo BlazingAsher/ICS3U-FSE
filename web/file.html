@@ -74,7 +74,7 @@ footer {
 
       <!-- Post Content Column -->
       <div class="col-lg-8" >
-			<div style="margin-top: 1.5em; height:75vh;" id="fileview">
+			<div style="margin-top: 1.5em; height:75vh; overflow-y: hidden;" id="fileview">
 			
 			  </div>
       </div>
@@ -87,31 +87,10 @@ footer {
           <h5 class="card-header">File Info</h5>
           <div class="card-body">
             <div class="row">
-              <div class="col-lg-6">
-                <ul class="list-unstyled mb-0">
-                  <li>
-                    <a href="#">Web Design</a>
-                  </li>
-                  <li>
-                    <a href="#">HTML</a>
-                  </li>
-                  <li>
-                    <a href="#">Freebies</a>
-                  </li>
-                </ul>
-              </div>
-              <div class="col-lg-6">
-                <ul class="list-unstyled mb-0">
-                  <li>
-                    <a href="#">JavaScript</a>
-                  </li>
-                  <li>
-                    <a href="#">CSS</a>
-                  </li>
-                  <li>
-                    <a href="#">Tutorials</a>
-                  </li>
-                </ul>
+              <div class="col-lg-12">
+                <span style="font-weight: bold">Name:</span> <span id="filename"></span><br>
+				<span style="font-weight: bold">Path:</span> <span id="filepath"></span><br>
+				<span style="font-weight: bold">Server:</span> <span id="fileserver"></span>
               </div>
             </div>
           </div>
@@ -122,12 +101,8 @@ footer {
           <h5 class="card-header">Actions</h5>
           <div class="card-body">
             <div style="margin-top: 0.5em;">
-			<a id="downloadfile" href="" download>Download File</a>
-			</div>
-			<div style="margin-top: 0.5em;">
-				<label for="check1">Files Only: </label>
-				<input type="checkbox" id="check1" name="searchIn" value="filename" checked>
-				
+			<a id="downloadfile" href="" download><button type="button" class="btn btn-primary">Download</button></a>
+			<a id="sharefile" href=""><button type="button" class="btn btn-primary">Share</button></a>
 			</div>
           </div>
         </div>
@@ -212,7 +187,7 @@ function generateMediaComponent(src, type, add){
 		$("#fileview").append(eleAud);
 	}
 	else if(type == "image"){
-		var eleImg = `<img src="$(src)" width="100%">`;
+		var eleImg = `<img src="${src}" width="100%">`;
 		$("#fileview").append(eleImg);
 	}
 	else if(type == "pdf"){
@@ -250,6 +225,9 @@ $.ajax({
 					var fileMetadata = getFileType(fileInfo.subject);
 					generateMediaComponent(requestUrl, fileMetadata[0], fileMetadata[1]);	
 					$("#downloadfile").attr("href", requestUrl);
+					$("#filename").text(fileInfo.subject);
+					$("#filepath").text(fileInfo.path);
+					$("#fileserver").text(fileInfo.server);
 				}
 			});
 			//console.log(data);
