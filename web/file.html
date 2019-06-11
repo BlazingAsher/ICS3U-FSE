@@ -75,7 +75,6 @@ footer {
       <!-- Post Content Column -->
       <div class="col-lg-8" >
 			<div style="margin-top: 1.5em; height:75vh; overflow-y: hidden;" id="fileview">
-			
 			  </div>
       </div>
 
@@ -102,7 +101,7 @@ footer {
           <div class="card-body">
             <div style="margin-top: 0.5em;">
 			<a id="downloadfile" href="" download><button type="button" class="btn btn-primary">Download</button></a>
-			<a id="sharefile" href=""><button type="button" class="btn btn-primary">Share</button></a>
+			<a id="sharefile" href="" style="display: none"><button type="button" class="btn btn-primary">Share</button></a>
 			</div>
           </div>
         </div>
@@ -129,20 +128,45 @@ footer {
   <script src="vendor/jquery/jquery.min.js"></script>
   <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="https://vjs.zencdn.net/7.5.4/video.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/jwt-decode@2.2.0/build/jwt-decode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
 <script>
+var fileID = get('id');
+var token = get('token');
+var gfileInfo;
+var webHost = "";
+var controllerHost = "http://127.0.0.1:5000";
+
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
       return decodeURIComponent(name[1]);
 }
+function getOperationToken(mode = "token"){
+	var lstoken = localStorage.getItem("token");
+	var reqtoken = token;
+
+	if(lstoken === null){
+		if(mode == "token"){
+			return reqtoken;
+		}
+		else{
+			return "request"
+		}
+	}
+	else{
+		if(mode == "token"){
+			return lstoken;
+		}
+		else{
+			return "local"
+		}
+	}
+}
+
 </script>
 <script>
 $(function (){
-var fileID = get('id');
-var token = get('token');
-
-query = {"operation": "getById", "id": fileID};
-console.log(query)
+localStorage.setItem("lastPage", "file");
 
 function getFileType(filename){
 	filename = filename.toLowerCase();
@@ -203,39 +227,109 @@ function generateMediaComponent(src, type, add){
 	}
 }
 
+	
+$("#sharefile").click(function (e){
+e.preventDefault();
+	$.ajax({
+		url: controllerHost + "/share/",
+		contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+		headers: {
+			"Authorization": "Bearer "+getOperationToken()
+		},
+		type: 'POST',
+		data: JSON.stringify({"path": gfileInfo.path, "server": gfileInfo.server}),
+		success: function (data) {
+			var url = webHost + "/file.html?token=" + data.token;
+			Swal.fire({
+			  title: 'Link Generated!',
+			  type: 'success',
+			  html: `A sharing link has been created!<br><a href="${url}">${url}</a>`
+			})
+		}
+	});
+});
 
-//generateMediaComponent("MY_VIDEO.mp4", "video", "video/mp4");
-$.ajax({
-		url: "http://127.0.0.1:5000/query/",
+function setup(query){
+	$.ajax({
+		url: controllerHost + "/query/",
 		data: JSON.stringify(query),
 		contentType: 'application/json; charset=utf-8',
 		dataType: 'json',
+		headers: {
+			"Authorization": "Bearer "+getOperationToken()
+		},
 		type: 'POST',
 		success: function (data) {
 			var fileInfo = data.data;
 			$.ajax({
-				url: "http://127.0.0.1:5000/server/",
+				url: controllerHost + "/server/",
 				type: 'GET',
+				headers: {
+					"Authorization": "Bearer "+getOperationToken()
+				},
 				success: function (data2) {
 					console.log(data2);
 					console.log(data2.servers[fileInfo.server]);
-					var serverAddress = data2.servers[fileInfo.server][0]
-					var requestUrl = serverAddress + "/retrieve/" + encodeURIComponent(fileInfo.path);
-					console.log(requestUrl);
-					var fileMetadata = getFileType(fileInfo.subject);
-					generateMediaComponent(requestUrl, fileMetadata[0], fileMetadata[1]);	
-					$("#downloadfile").attr("href", requestUrl);
-					$("#filename").text(fileInfo.subject);
-					$("#filepath").text(fileInfo.path);
-					$("#fileserver").text(fileInfo.server);
+					
+					if(data2.servers[fileInfo.server] === undefined){
+						$("#fileview").append("<h2>Unable to contact server</h2>");
+					}
+					else{
+						var serverAddress = data2.servers[fileInfo.server][0];
+						var requestUrl = serverAddress + "/retrieve/" + encodeURIComponent(fileInfo.path);
+						console.log(requestUrl);
+						var fileMetadata = getFileType(fileInfo.subject);
+						generateMediaComponent(requestUrl, fileMetadata[0], fileMetadata[1]);	
+						$("#downloadfile").attr("href", requestUrl);
+						$("#filename").text(fileInfo.subject);
+						$("#filepath").text(fileInfo.path);
+						$("#fileserver").text(fileInfo.server);
+						gfileInfo = fileInfo;
+					}
+					
 				}
 			});
 			//console.log(data);
 		}
 	});
-// retrieve url from DB
-	//var pdfUrl = "http://127.0.0.1:3000/retrieve/D%3A%5CDownloads%5C5.0-Function-Assignment.pdf"
-	//var reqUrl = encodeURIComponent(pdfUrl);
+}
+
+if(getOperationToken("type") == "request"){
+	try{
+		var tokenInfo = jwt_decode(token);
+	}
+	catch(err){
+		Swal.fire({
+			  title: 'Access Denied',
+			  type: 'error',
+			  text: 'You do not have permission to access this resource'
+			}).then(() => {
+			window.location.replace(webHost);
+		})
+	}
+	
+	console.log(tokenInfo);
+	$.ajax({
+		url: controllerHost + "/query/",
+		data: JSON.stringify({"operation": "getOneByQuery", "query": {"path": tokenInfo.scope, "server": tokenInfo.server}}),
+		contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+		headers: {
+			"Authorization": "Bearer "+getOperationToken()
+		},
+		type: 'POST',
+		success: function (data) {
+			console.log(data);
+			setup({"operation": "getById", "id": data.data["_id"]["$oid"]});
+		}
+	});
+	
+}
+else{
+	setup({"operation": "getById", "id": fileID});
+	$("#sharefile").show();
+}
 	
 });
 </script>

@@ -98,34 +98,11 @@
 
         <!-- Categories Widget -->
         <div class="card my-4">
-          <h5 class="card-header">File Types</h5>
+          <h5 class="card-header">Servers</h5>
           <div class="card-body">
             <div class="row">
-              <div class="col-lg-6">
-                <ul class="list-unstyled mb-0">
-                  <li>
-                    <a href="#">Web Design</a>
-                  </li>
-                  <li>
-                    <a href="#">HTML</a>
-                  </li>
-                  <li>
-                    <a href="#">Freebies</a>
-                  </li>
-                </ul>
-              </div>
-              <div class="col-lg-6">
-                <ul class="list-unstyled mb-0">
-                  <li>
-                    <a href="#">JavaScript</a>
-                  </li>
-                  <li>
-                    <a href="#">CSS</a>
-                  </li>
-                  <li>
-                    <a href="#">Tutorials</a>
-                  </li>
-                </ul>
+              <div class="col-lg-12" id="servers">
+                
               </div>
             </div>
           </div>
@@ -168,14 +145,23 @@
 </div>
   <!-- Bootstrap core JavaScript -->
   <script src="vendor/jquery/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
   <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
 <script>
 var card = '<div class="card hovercard"><div class="card-body"><h5 class="card-title">document.docx</h5><p class="card-text">With supporting text below as a natural lead-in to additional content.</p></div></div><div class="spacer"></div>';
 
+var webHost = "";
+
+function get(name){
+   if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
+      return decodeURIComponent(name[1]);
+}
+
 var currPage = 1;
 var pageSize = 25;
 var showFolders = false;
+var queryServers = [];
 
 function getNext(){
 	var query = makeRequest(currPage+1, pageSize);
@@ -249,7 +235,15 @@ function makeRequest(page=1, page_size=25){
 	else if(searchIn = "filename"){
 		query["query"]["$and"].push({"subject": {"$regex": $("#searchQuery").val()}});
 	}
-	
+	var serverRegSelect = "(";
+	for(var i=0;i<queryServers.length;i++){
+		serverRegSelect += queryServers[i];
+		if(i != queryServers.length-1){
+			serverRegSelect+="|"
+		}
+	}
+	serverRegSelect+=")"
+	query["query"]["$and"].push({"server": {"$regex": serverRegSelect}});
 	if(!showFolders){
 		query["query"]["$and"].push({"properties.type": "file"});
 	}
@@ -263,6 +257,9 @@ function makeQuery(query, nextFunc="inject"){
 		contentType: 'application/json; charset=utf-8',
 		dataType: 'json',
 		type: 'POST',
+		headers: {
+			"Authorization": "Bearer "+localStorage.getItem("token")
+		},
 		success: function (data) {
 			if(nextFunc == "inject"){
 				injectResults(data);
@@ -273,13 +270,18 @@ function makeQuery(query, nextFunc="inject"){
 			else if(nextFunc == "prev"){
 				procPrev(data);
 			}
+			localStorage.setItem("lastSearch", JSON.stringify({"search": $("searchQuery").val(), "currPage": currPage, "pageSize": pageSize, "data": data}))
 		}
 	});
 }
 
 $(function (){
 	$("#searchQuery").select();
-
+	var urlQuery = get("query");
+	if(urlQuery){
+		$("#searchQuery").val(urlQuery);
+		$("#searchBtn").click();
+	}
 /*
 	var query = {"operation": "getAll"}
 	$.ajax({
@@ -294,6 +296,72 @@ $(function (){
             injectResults(data);
         }
     });*/
+	var lastPage = localStorage.getItem("lastPage");
+	if (lastPage == "file"){
+		var lastSearch = localStorage.getItem("lastSearch");
+		if(lastSearch){
+			var lastSearchObj = JSON.parse(lastSearch);
+			$("searchQuery").text(lastSearchObj["search"])
+			currPage = lastSearchObj["currPage"];
+			pageSize = lastSearchObj["pageSize"];
+			injectResults(lastSearchObj["data"]);
+		}
+	}
+	localStorage.setItem("lastPage", "search");
+	
+	$.ajax({
+        url: "http://127.0.0.1:5000/server/",
+        type: 'GET',
+		headers: {
+			"Authorization": "Bearer "+localStorage.getItem("token")
+		},
+        success: function (data) {
+			if(data.code == 200){
+				console.log(data);
+				for (var property in data.servers) {
+					if (data.servers.hasOwnProperty(property)) {
+						queryServers.push(property);
+						$("#servers").append(`<label for="server-${property}">${property}: </label> <input type="checkbox" id="server-${property}" data-server="${property}" checked>`);
+						$(`#server-${property}`).change(function (){
+							var thing = ($(this))
+							console.log(thing);
+							if(!thing[0].checked){
+								var index = queryServers.indexOf(thing[0].dataset.server);
+								 
+								if (index > -1) {
+									  queryServers.splice(index, 1);
+								}
+							}
+							else{
+								queryServers.push(thing[0].dataset.server);
+							}
+							
+						});
+					}
+				}
+			}
+			else if(data.code == 401){
+				Swal.fire({
+					  title: 'Access Denied',
+					  type: 'error',
+					  text: 'You do not have permission to access this resource'
+					}).then(() => {
+					window.location.replace(webHost);
+				})
+			}
+			else{
+				Swal.fire({
+					  title: 'Error',
+					  type: 'error',
+					  text: data.error
+					}).then(() => {
+					window.location.replace(webHost);
+				})
+			}
+			
+        }
+    });
+	
 	
 	$("#searchQuery").keypress(function (e){
 		var keycode = (e.keyCode ? e.keyCode : e.which);
