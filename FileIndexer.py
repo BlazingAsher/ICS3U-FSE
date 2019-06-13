@@ -2,6 +2,7 @@ import magic
 import re
 import os
 import pymongo
+from bson.objectid import ObjectId
 
 class Response:
     code = 500
@@ -150,6 +151,9 @@ class Index:
     def getAllByQuery(self, query, page_size, page_num):
         skips = page_size * (page_num - 1)
         return self._indexCollection.find(query).skip(skips).limit(page_size)
+
+    def getById(self, oid):
+        return self._indexCollection.find({"_id": ObjectId(oid)})
 
     def getIndexSize(self):
         return self._indexCollection.count()

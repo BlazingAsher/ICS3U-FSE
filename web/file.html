@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <title>Blog Post - Start Bootstrap Template</title>
+
+  <!-- Bootstrap core CSS -->
+  <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Custom styles for this template -->
+  <link href="css/blog-post.css" rel="stylesheet">
+  <link href="https://vjs.zencdn.net/7.5.4/video-js.css" rel="stylesheet">
+
+<style>
+.spacer {
+	height: 1em;
+}
+
+.hovercard:hover{
+	background-color: #f4f4f4 !important;
+	cursor: pointer;
+}
+
+footer {
+    clear: both;
+    position: relative;
+    height: 120px;
+    margin-top: -120px;
+}
+</style>
+</head>
+
+<body>
+
+<div style="position: relative; min-height: 100vh">
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container">
+      <a class="navbar-brand" href="#">QwikSearch</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarResponsive">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item active">
+            <a class="nav-link" href="#">Home
+              <span class="sr-only">(current)</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">About</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Services</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Contact</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Content -->
+  <div class="container">
+
+    <div class="row">
+
+      <!-- Post Content Column -->
+      <div class="col-lg-8" >
+			<div style="margin-top: 1.5em; height:75vh; overflow-y: hidden;" id="fileview">
+			  </div>
+      </div>
+
+      <!-- Sidebar Widgets Column -->
+      <div class="col-md-4">
+
+        <!-- Categories Widget -->
+        <div class="card my-4">
+          <h5 class="card-header">File Info</h5>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-lg-12">
+                <span style="font-weight: bold">Name:</span> <span id="filename"></span><br>
+				<span style="font-weight: bold">Path:</span> <span id="filepath"></span><br>
+				<span style="font-weight: bold">Server:</span> <span id="fileserver"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side Widget -->
+        <div class="card my-4">
+          <h5 class="card-header">Actions</h5>
+          <div class="card-body">
+            <div style="margin-top: 0.5em;">
+			<a id="downloadfile" href="" download><button type="button" class="btn btn-primary">Download</button></a>
+			<a id="sharefile" href="" style="display: none"><button type="button" class="btn btn-primary">Share</button></a>
+			</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /.row -->
+
+  </div>
+  <!-- /.container -->
+
+ 
+</div>
+ <!-- Footer -->
+  <footer class="py-5 bg-dark">
+    <div class="container">
+      <p class="m-0 text-center text-white">Copyright &copy; 2019 David Hui and Sat Arora</p>
+    </div>
+    <!-- /.container -->
+  </footer>
+  
+  <!-- Bootstrap core JavaScript -->
+  <script src="vendor/jquery/jquery.min.js"></script>
+  <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="https://vjs.zencdn.net/7.5.4/video.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jwt-decode@2.2.0/build/jwt-decode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
+<script>
+var fileID = get('id');
+var token = get('token');
+var gfileInfo;
+var webHost = "";
+var controllerHost = "http://127.0.0.1:5000";
+
+function get(name){
+   if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
+      return decodeURIComponent(name[1]);
+}
+function getOperationToken(mode = "token"){
+	var lstoken = localStorage.getItem("token");
+	var reqtoken = token;
+
+	if(lstoken === null){
+		if(mode == "token"){
+			return reqtoken;
+		}
+		else{
+			return "request"
+		}
+	}
+	else{
+		if(mode == "token"){
+			return lstoken;
+		}
+		else{
+			return "local"
+		}
+	}
+}
+
+</script>
+<script>
+$(function (){
+localStorage.setItem("lastPage", "file");
+
+function getFileType(filename){
+	filename = filename.toLowerCase();
+	var extension = filename.split('.').pop();
+	var types = {
+		"png": ["image", "nothing"],
+		"jpg": ["image", "nothing"],
+		"img": ["image", "nothing"],
+		"mp4": ["video", "video/mp4"],
+		"webm": ["video", "video/webm"],
+		"ogg": ["video", "video/ogg"],
+		"pdf": ["pdf", "nothing"],
+		"mp3": ["audio", "audio/mpeg"],
+		"wav": ["audio", "audio/wav"],
+		"txt": ["plaintext", "nothing"]
+	};
+	type = types[extension]
+	if (type === undefined){
+		type = "unknown"
+	}
+	return type
+}
+
+function generateMediaComponent(src, type, add){
+	if(type == "video"){
+		var eleVid = `<video id="my-video" class="video-js" controls preload="auto" width="640" height="264"
+			   data-setup="{}">
+				<source src="${src}" type="${add}">
+				<p class="vjs-no-js">
+				  To view this video please enable JavaScript, and consider upgrading to a web browser that
+				  <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+				</p>
+			  </video>`;
+		$("#fileview").append(eleVid);
+		videojs('my-video');
+	}
+	else if(type == "audio"){
+		var eleAud = `<audio controls>
+			  <source src="${src}" type="${add}">
+			Your browser does not support the audio element.
+			</audio>`;
+		$("#fileview").append(eleAud);
+	}
+	else if(type == "image"){
+		var eleImg = `<img src="${src}" width="100%">`;
+		$("#fileview").append(eleImg);
+	}
+	else if(type == "pdf"){
+		var elePdf = `<iframe id="pdfsrc" width='100%' height="100%"></iframe>`;
+		$("#fileview").append(elePdf);
+		$("#pdfsrc").attr("src", "pdfjs/viewer.html?file="+encodeURIComponent(src));
+	}
+	else if(type == "plaintext"){
+		
+	}
+	else {
+		$("#fileview").append("<h2>Unable to preview this file</h2>");
+	}
+}
+
+	
+$("#sharefile").click(function (e){
+e.preventDefault();
+	$.ajax({
+		url: controllerHost + "/share/",
+		contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+		headers: {
+			"Authorization": "Bearer "+getOperationToken()
+		},
+		type: 'POST',
+		data: JSON.stringify({"path": gfileInfo.path, "server": gfileInfo.server}),
+		success: function (data) {
+			var url = webHost + "/file.html?token=" + data.token;
+			Swal.fire({
+			  title: 'Link Generated!',
+			  type: 'success',
+			  html: `A sharing link has been created!<br><a href="${url}">${url}</a>`
+			})
+		}
+	});
+});
+
+function setup(query){
+	$.ajax({
+		url: controllerHost + "/query/",
+		data: JSON.stringify(query),
+		contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+		headers: {
+			"Authorization": "Bearer "+getOperationToken()
+		},
+		type: 'POST',
+		success: function (data) {
+			var fileInfo = data.data;
+			$.ajax({
+				url: controllerHost + "/server/",
+				type: 'GET',
+				headers: {
+					"Authorization": "Bearer "+getOperationToken()
+				},
+				success: function (data2) {
+					console.log(data2);
+					console.log(data2.servers[fileInfo.server]);
+					
+					if(data2.servers[fileInfo.server] === undefined){
+						$("#fileview").append("<h2>Unable to contact server</h2>");
+					}
+					else{
+						var serverAddress = data2.servers[fileInfo.server][0];
+						var requestUrl = serverAddress + "/retrieve/" + encodeURIComponent(fileInfo.path);
+						console.log(requestUrl);
+						var fileMetadata = getFileType(fileInfo.subject);
+						generateMediaComponent(requestUrl, fileMetadata[0], fileMetadata[1]);	
+						$("#downloadfile").attr("href", requestUrl);
+						$("#filename").text(fileInfo.subject);
+						$("#filepath").text(fileInfo.path);
+						$("#fileserver").text(fileInfo.server);
+						gfileInfo = fileInfo;
+					}
+					
+				}
+			});
+			//console.log(data);
+		}
+	});
+}
+
+if(getOperationToken("type") == "request"){
+	try{
+		var tokenInfo = jwt_decode(token);
+	}
+	catch(err){
+		Swal.fire({
+			  title: 'Access Denied',
+			  type: 'error',
+			  text: 'You do not have permission to access this resource'
+			}).then(() => {
+			window.location.replace(webHost);
+		})
+	}
+	
+	console.log(tokenInfo);
+	$.ajax({
+		url: controllerHost + "/query/",
+		data: JSON.stringify({"operation": "getOneByQuery", "query": {"path": tokenInfo.scope, "server": tokenInfo.server}}),
+		contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+		headers: {
+			"Authorization": "Bearer "+getOperationToken()
+		},
+		type: 'POST',
+		success: function (data) {
+			console.log(data);
+			setup({"operation": "getById", "id": data.data["_id"]["$oid"]});
+		}
+	});
+	
+}
+else{
+	setup({"operation": "getById", "id": fileID});
+	$("#sharefile").show();
+}
+	
+});
+</script>
+
+</body>
+
+</html>
