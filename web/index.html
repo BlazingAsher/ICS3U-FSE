@@ -53,7 +53,7 @@
             <a class="nav-link" href="#">Services</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Contact</a>
+            <a class="nav-link" href="login.html?action=logout">Logout</a>
           </li>
         </ul>
       </div>
@@ -152,6 +152,7 @@
 var card = '<div class="card hovercard"><div class="card-body"><h5 class="card-title">document.docx</h5><p class="card-text">With supporting text below as a natural lead-in to additional content.</p></div></div><div class="spacer"></div>';
 
 var webHost = "";
+var controllerHost = "http://127.0.0.1:5000";
 
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
@@ -252,7 +253,7 @@ function makeRequest(page=1, page_size=25){
 
 function makeQuery(query, nextFunc="inject"){
 	$.ajax({
-		url: "http://127.0.0.1:5000/query/",
+		url: controllerHost+ "/query/",
 		data: JSON.stringify(query),
 		contentType: 'application/json; charset=utf-8',
 		dataType: 'json',
@@ -310,7 +311,7 @@ $(function (){
 	localStorage.setItem("lastPage", "search");
 	
 	$.ajax({
-        url: "http://127.0.0.1:5000/server/",
+        url: controllerHost+"/server/",
         type: 'GET',
 		headers: {
 			"Authorization": "Bearer "+localStorage.getItem("token")
@@ -346,7 +347,7 @@ $(function (){
 					  type: 'error',
 					  text: 'You do not have permission to access this resource'
 					}).then(() => {
-					window.location.replace(webHost);
+					window.location.replace(webHost+"/login.html");
 				})
 			}
 			else{

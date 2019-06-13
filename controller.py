@@ -124,8 +124,8 @@ def r_createuser():
 def r_userauth():
     rbody = request.get_json()
     try:
-        username = rbody["username"]
-        password = rbody["password"]
+        username = rbody["username"].strip()
+        password = rbody["password"].strip()
     except KeyError:
         return jsonify({"code": 400, "error": "Invalid request"})
     user = userdb.find_one({"username": username})

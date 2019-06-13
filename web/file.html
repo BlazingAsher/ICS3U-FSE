@@ -60,7 +60,7 @@ footer {
             <a class="nav-link" href="#">Services</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Contact</a>
+            <a class="nav-link" href="login.html?action=logout">Logout</a>
           </li>
         </ul>
       </div>
@@ -174,7 +174,7 @@ function getFileType(filename){
 	var types = {
 		"png": ["image", "nothing"],
 		"jpg": ["image", "nothing"],
-		"img": ["image", "nothing"],
+		"gif": ["image", "nothing"],
 		"mp4": ["video", "video/mp4"],
 		"webm": ["video", "video/webm"],
 		"ogg": ["video", "video/ogg"],
@@ -305,7 +305,7 @@ if(getOperationToken("type") == "request"){
 			  type: 'error',
 			  text: 'You do not have permission to access this resource'
 			}).then(() => {
-			window.location.replace(webHost);
+			window.location.replace(webHost + "/login.html");
 		})
 	}
 	
