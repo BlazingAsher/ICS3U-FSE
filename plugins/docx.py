@@ -4,11 +4,11 @@ def get_id():
     return "com.satarora.docx"
 
 def get_handlers():
-    return ["application\/vnd.openxmlformats-officedocument.wordprocessingml.document"] ##GET HELP FOR HANDLER
+    return ["application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document"] ##GET HELP FOR HANDLER
 
 def get_mappings():
     docxMap = {
-        "docx" : "application\/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "docx" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     }
     return docxMap
 

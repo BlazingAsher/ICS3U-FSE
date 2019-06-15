@@ -88,7 +88,7 @@ class Processor:
         # Prefer an exact match
         matchedReg = ""
         for reg in self.compiledMatches:
-            if reg[0].replace("\/","/") == strToMatch:
+            if reg[0].replace("\/","/").replace("\.",".") == strToMatch:
                 return dic[reg[0]]
             elif reg[1].match(strToMatch):
                 matchedReg = reg[0]

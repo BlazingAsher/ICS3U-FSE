@@ -426,7 +426,7 @@ function populateServers(){
 							}
 							console.log(info);
 							
-							$('#servertable').append(`<tr><td>${name}</td><td><a href="${info[0]}" target="_blank">${info[0]}</a></td><td>${moment(info[1]*1000).format("dddd, MMMM Do YYYY, h:mm:ss a")}</td><td>${buildIndexString}</td><td><button id="server-rebuild-${name}" class="btn btn-primary" onclick="rebuildServer(this.dataset)" data-server="${name}">Build</button> <button id="server-rebuild-cancel-${name}" class="btn btn-danger" onclick="cancelRebuildServer(this.dataset)" data-server="${name}">Cancel Build</button></td><td><button id="server-kick-${name}" class="btn btn-warning" onclick="kickServer(this.dataset)" data-server="${name}">Kick</button></td><td><button id="server-kill-${name}" class="btn btn-danger" onclick="killServer(this.dataset)" data-server="${name}">Kill</button></td></tr>`)
+							$('#servertable').append(`<tr><td>${name}</td><td><a href="${info[0]}" target="_blank">${info[0]}</a></td><td>${moment.unix(info[1]).format("dddd, MMMM Do YYYY, h:mm:ss a")}</td><td>${buildIndexString}</td><td><button id="server-rebuild-${name}" class="btn btn-primary" onclick="rebuildServer(this.dataset)" data-server="${name}">Build</button> <button id="server-rebuild-cancel-${name}" class="btn btn-danger" onclick="cancelRebuildServer(this.dataset)" data-server="${name}">Cancel Build</button></td><td><button id="server-kick-${name}" class="btn btn-warning" onclick="kickServer(this.dataset)" data-server="${name}">Kick</button></td><td><button id="server-kill-${name}" class="btn btn-danger" onclick="killServer(this.dataset)" data-server="${name}">Kill</button></td></tr>`)
 						}
 					})
 				}

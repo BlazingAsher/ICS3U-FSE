@@ -35,7 +35,7 @@ fp.loadSettings()
 fileIndex = fi.Index(db=MONGO_STRING)
 
 # Create a thread pool so that Python doesn't spawn thousands of threads during indexing
-tp =  ThreadPool(16)
+tp = None
 
 exclusions = ["node_modules", "\.git"]
 
@@ -74,7 +74,8 @@ def populateProperties(path, options={}):
         return
     
 def createIndex(path, options={}):
-    global job_status
+    global job_status, tp
+    
     allPaths = []
     if os.path.isdir(path):
         # Create a path queue and a depth queue to keep track of node depth
@@ -118,6 +119,7 @@ def createIndex(path, options={}):
 
         print("list done")
         job_status["build"] = {"completed": 0,"total": len(allPaths),"state": "OK","additional": "File-tree built","cancelled": False}
+        tp =  ThreadPool(16)
         for path in allPaths:
             # Assign a new task to populate properties of the file/directory to the thread pool
             tp.apply_async(populateProperties, args=(path,))
