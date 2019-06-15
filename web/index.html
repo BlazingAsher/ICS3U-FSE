@@ -25,6 +25,12 @@
 	background-color: #f4f4f4 !important;
 	cursor: pointer;
 }
+#footer {
+    clear: both;
+    position: relative;
+    height: 120px;
+    margin-top: -120px;
+}
 </style>
 
 </head>
@@ -42,9 +48,12 @@
       <div class="collapse navbar-collapse" id="navbarResponsive">
         <ul class="navbar-nav ml-auto">
           <li class="nav-item active">
-            <a class="nav-link" href="#">Home
+            <a class="nav-link" href="index.html">Home
               <span class="sr-only">(current)</span>
             </a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link" href="favourites.html">Favourites</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="manage.html">Management</a>
@@ -132,8 +141,9 @@
   </div>
   <!-- /.container -->
 
-  <!-- Footer -->
-  <footer class="py-5 bg-dark" style="margin-top: 7em">
+</div>
+<div id="footer">
+	  <footer class="py-5 bg-dark" style="margin-top: 7em">
     <div class="container">
       <p class="m-0 text-center text-white">Copyright &copy; 2019 David Hui and Sat Arora</p>
     </div>
@@ -242,10 +252,15 @@ function makeRequest(page=1, page_size=25){
 	}
 	serverRegSelect+=")"
 	query["query"]["$and"].push({"server": {"$regex": serverRegSelect}});
-	if(!showFolders){
-		query["query"]["$and"].push({"properties.type": "file"});
+	if(serverRegSelect == "()"){
+		return "NONE"
+	}else{
+		if(!showFolders){
+			query["query"]["$and"].push({"properties.type": "file"});
+		}
+		return query;
 	}
-	return query;
+	
 }
 
 function makeQuery(query, nextFunc="inject"){
@@ -371,7 +386,14 @@ $(function (){
 	$("#searchBtn").click(function (e){
 		e.preventDefault();
 		var query = makeRequest();
-		makeQuery(query);
+		if(query == "NONE"){
+			$("#results").empty();
+			$("#results").append("No servers to contact.");
+		}
+		else{
+			makeQuery(query);
+		}
+		
 	});
 	
 });

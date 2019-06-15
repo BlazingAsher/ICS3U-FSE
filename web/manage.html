@@ -8,7 +8,7 @@
   <meta name="description" content="">
   <meta name="author" content="">
 
-  <title>Blog Post - Start Bootstrap Template</title>
+  <title>QwikSearch - Manage System</title>
 
   <!-- Bootstrap core CSS -->
   <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
@@ -42,9 +42,12 @@
       <div class="collapse navbar-collapse" id="navbarResponsive">
         <ul class="navbar-nav ml-auto">
           <li class="nav-item">
-            <a class="nav-link" href="#">Home
+            <a class="nav-link" href="index.html">Home
               
             </a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link" href="favourites.html">Favourites</a>
           </li>
           <li class="nav-item active">
             <a class="nav-link" href="manage.html">Management</a>
@@ -421,8 +424,9 @@ function populateServers(){
 								var percentage = Math.round((data.status.completed/data.status.total)*100,2);
 								buildIndexString += `(${percentage}%)`
 							}
+							console.log(info);
 							
-							$('#servertable').append(`<tr><td>${name}</td><td><a href="${info[0]}" target="_blank">${info[0]}</a></td><td>${moment().millisecond(info[1]).format("dddd, MMMM Do YYYY, h:mm:ss a")}</td><td>${buildIndexString}</td><td><button id="server-rebuild-${name}" class="btn btn-primary" onclick="rebuildServer(this.dataset)" data-server="${name}">Build</button> <button id="server-rebuild-cancel-${name}" class="btn btn-danger" onclick="cancelRebuildServer(this.dataset)" data-server="${name}">Cancel Build</button></td><td><button id="server-kick-${name}" class="btn btn-warning" onclick="kickServer(this.dataset)" data-server="${name}">Kick</button></td><td><button id="server-kill-${name}" class="btn btn-danger" onclick="killServer(this.dataset)" data-server="${name}">Kill</button></td></tr>`)
+							$('#servertable').append(`<tr><td>${name}</td><td><a href="${info[0]}" target="_blank">${info[0]}</a></td><td>${moment(info[1]*1000).format("dddd, MMMM Do YYYY, h:mm:ss a")}</td><td>${buildIndexString}</td><td><button id="server-rebuild-${name}" class="btn btn-primary" onclick="rebuildServer(this.dataset)" data-server="${name}">Build</button> <button id="server-rebuild-cancel-${name}" class="btn btn-danger" onclick="cancelRebuildServer(this.dataset)" data-server="${name}">Cancel Build</button></td><td><button id="server-kick-${name}" class="btn btn-warning" onclick="kickServer(this.dataset)" data-server="${name}">Kick</button></td><td><button id="server-kill-${name}" class="btn btn-danger" onclick="killServer(this.dataset)" data-server="${name}">Kill</button></td></tr>`)
 						}
 					})
 				}
@@ -431,26 +435,10 @@ function populateServers(){
 }
 
 $(function (){
-	$("#searchQuery").select();
-	var urlQuery = get("query");
-	if(urlQuery){
-		$("#searchQuery").val(urlQuery);
-		$("#searchBtn").click();
+
+	if(!localStorage.getItem("token")){
+		window.location.replace(webHost+"/login.html");
 	}
-	/*
-	var query = {"operation": "getAll"}
-	$.ajax({
-        url: "http://127.0.0.1:5000/query/",
-        data: JSON.stringify(query),
-        contentType: 'application/json; charset=utf-8',
-		dataType: 'json',
-        type: 'POST',
-        success: function (data) {
-			console.log(data);
-			
-            injectResults(data);
-        }
-    });*/
 	
 	populateUsers();
 	populateServers();

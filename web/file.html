@@ -8,7 +8,7 @@
   <meta name="description" content="">
   <meta name="author" content="">
 
-  <title>Blog Post - Start Bootstrap Template</title>
+  <title>QwikSearch - View File</title>
 
   <!-- Bootstrap core CSS -->
   <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
@@ -49,8 +49,11 @@ footer {
       <div class="collapse navbar-collapse" id="navbarResponsive">
         <ul class="navbar-nav ml-auto">
           <li class="nav-item">
-            <a class="nav-link" href="#">Home
+            <a class="nav-link" href="index.html">Home
             </a>
+          </li>
+		  <li class="nav-item">
+            <a class="nav-link" href="favourites.html">Favourites</a>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="manage.html">Management</a>
@@ -98,6 +101,7 @@ footer {
             <div style="margin-top: 0.5em;">
 			<a id="downloadfile" href="" download><button type="button" class="btn btn-primary">Download</button></a>
 			<a id="sharefile" href="" style="display: none"><button type="button" class="btn btn-primary">Share</button></a>
+			<a id="favfile" href="" style="display: none"><button id="btnfavfile" type="button" class="btn btn-primary">Favourite</button></a>
 			</div>
           </div>
         </div>
@@ -132,6 +136,7 @@ var token = get('token');
 var gfileInfo;
 var webHost = "file:///C:/Users/David/Documents/Git Projects/ICS3U FSE/web";
 var controllerHost = "http://127.0.0.1:5000";
+var favLoc = -2;
 
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
@@ -158,11 +163,6 @@ function getOperationToken(mode = "token"){
 		}
 	}
 }
-
-</script>
-<script>
-$(function (){
-localStorage.setItem("lastPage", "file");
 
 function getFileType(filename){
 	filename = filename.toLowerCase();
@@ -223,30 +223,7 @@ function generateMediaComponent(src, type, add){
 	}
 }
 
-	
-$("#sharefile").click(function (e){
-e.preventDefault();
-	$.ajax({
-		url: controllerHost + "/share/",
-		contentType: 'application/json; charset=utf-8',
-		dataType: 'json',
-		headers: {
-			"Authorization": "Bearer "+getOperationToken()
-		},
-		type: 'POST',
-		data: JSON.stringify({"path": gfileInfo.path, "server": gfileInfo.server}),
-		success: function (data) {
-			var url = webHost + "/file.html?token=" + data.token;
-			Swal.fire({
-			  title: 'Link Generated!',
-			  type: 'success',
-			  html: `A sharing link has been created!<br><a href="${url}">${url}</a>`
-			})
-		}
-	});
-});
-
-function setup(query){
+	function setup(query){
 	$.ajax({
 		url: controllerHost + "/query/",
 		data: JSON.stringify(query),
@@ -282,6 +259,10 @@ function setup(query){
 						$("#filepath").text(fileInfo.path);
 						$("#fileserver").text(fileInfo.server);
 						gfileInfo = fileInfo;
+						getLocOfFav(gfileInfo["_id"]["$oid"]);
+						if(favLoc != -1){
+							$('#btnfavfile').text("Unfavourite")
+						}
 					}
 					
 				}
@@ -291,42 +272,125 @@ function setup(query){
 	});
 }
 
-if(getOperationToken("type") == "request"){
-	try{
-		var tokenInfo = jwt_decode(token);
-	}
-	catch(err){
-		Swal.fire({
-			  title: 'Access Denied',
-			  type: 'error',
-			  text: 'You do not have permission to access this resource'
-			}).then(() => {
-			window.location.replace(webHost + "/login.html");
-		})
-	}
-	
-	console.log(tokenInfo);
-	$.ajax({
-		url: controllerHost + "/query/",
-		data: JSON.stringify({"operation": "getOneByQuery", "query": {"path": tokenInfo.scope, "server": tokenInfo.server}}),
-		contentType: 'application/json; charset=utf-8',
-		dataType: 'json',
-		headers: {
-			"Authorization": "Bearer "+getOperationToken()
-		},
-		type: 'POST',
-		success: function (data) {
-			console.log(data);
-			setup({"operation": "getById", "id": data.data["_id"]["$oid"]});
+function getLocOfFav(id){
+	var favs = JSON.parse(localStorage.getItem("favourites"));
+	if(favs){
+		console.log(favs);
+		var index = -1;
+		for (var i=0;i<favs.favs.length;i++){
+			if(favs.favs[i]["id"] == id){
+				index = i;
+			}
 		}
+		favLoc = index;
+	}
+	else{
+		favLoc = -1;
+	}
+}
+
+</script>
+<script>
+$(function (){
+	localStorage.setItem("lastPage", "file");
+
+	$("#sharefile").click(function (e){
+		e.preventDefault();
+		$.ajax({
+			url: controllerHost + "/share/",
+			contentType: 'application/json; charset=utf-8',
+			dataType: 'json',
+			headers: {
+				"Authorization": "Bearer "+getOperationToken()
+			},
+			type: 'POST',
+			data: JSON.stringify({"path": gfileInfo.path, "server": gfileInfo.server}),
+			success: function (data) {
+				var url = webHost + "/file.html?token=" + data.token;
+				Swal.fire({
+				  title: 'Link Generated!',
+				  type: 'success',
+				  html: `A sharing link has been created!<br><a href="${url}">${url}</a>`
+				})
+			}
+		});
 	});
-	
-}
-else{
-	setup({"operation": "getById", "id": fileID});
-	$("#sharefile").show();
-}
-	
+
+	$("#favfile").click(function (e){
+		e.preventDefault();
+		if(favLoc == -1){
+			var favs = JSON.parse(localStorage.getItem("favourites"))
+			var fav = {"path": gfileInfo["path"], "server": gfileInfo["server"], "id": gfileInfo["_id"]["$oid"]}
+			console.log(fav);
+			
+			
+			if(!favs){
+				favs = {"favs": []}
+			}
+			console.log(favs);
+			
+			favs.favs.push(fav);
+			localStorage.setItem("favourites", JSON.stringify(favs))
+			$('#btnfavfile').text("Unfavourite")
+			favLoc = favs.favs.length-1;
+		}
+		else{
+			var favs = JSON.parse(localStorage.getItem("favourites"))
+			var fav = {"path": gfileInfo["path"], "server": gfileInfo["server"], "id": gfileInfo["_id"]["$oid"]}
+			console.log(fav);
+			
+			
+			if(!favs){
+				favs = {"favs": []}
+			}
+			console.log(favs);
+			
+			favs.favs.splice(favLoc, 1);
+			localStorage.setItem("favourites", JSON.stringify(favs))
+			$('#btnfavfile').text("Favourite")
+			favLoc = -1
+		}
+		
+		
+	});
+
+	if(getOperationToken("type") == "request"){
+		try{
+			var tokenInfo = jwt_decode(token);
+		}
+		catch(err){
+			Swal.fire({
+				  title: 'Access Denied',
+				  type: 'error',
+				  text: 'You do not have permission to access this resource'
+				}).then(() => {
+				window.location.replace(webHost + "/login.html");
+			})
+		}
+		
+		console.log(tokenInfo);
+		$.ajax({
+			url: controllerHost + "/query/",
+			data: JSON.stringify({"operation": "getOneByQuery", "query": {"path": tokenInfo.scope, "server": tokenInfo.server}}),
+			contentType: 'application/json; charset=utf-8',
+			dataType: 'json',
+			headers: {
+				"Authorization": "Bearer "+getOperationToken()
+			},
+			type: 'POST',
+			success: function (data) {
+				console.log(data);
+				setup({"operation": "getById", "id": data.data["_id"]["$oid"]});
+			}
+		});
+		
+	}
+	else{
+		setup({"operation": "getById", "id": fileID});
+		$("#sharefile").show();
+		$("#favfile").show();
+	}
+		
 });
 </script>
 
