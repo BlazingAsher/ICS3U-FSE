@@ -8,7 +8,7 @@
   <meta name="description" content="">
   <meta name="author" content="">
 
-  <title>Blog Post - Start Bootstrap Template</title>
+  <title>QwikSearch - View File</title>
 
   <!-- Bootstrap core CSS -->
   <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
@@ -27,7 +27,7 @@
 	cursor: pointer;
 }
 
-footer {
+#footer {
     clear: both;
     position: relative;
     height: 120px;
@@ -48,19 +48,18 @@ footer {
       </button>
       <div class="collapse navbar-collapse" id="navbarResponsive">
         <ul class="navbar-nav ml-auto">
-          <li class="nav-item active">
-            <a class="nav-link" href="#">Home
-              <span class="sr-only">(current)</span>
+          <li class="nav-item">
+            <a class="nav-link" href="index.html">Home
             </a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#">About</a>
+		  <li class="nav-item">
+            <a class="nav-link" href="favourites.html">Favourites</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Services</a>
+            <a class="nav-link" href="manage.html">Management</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Contact</a>
+            <a class="nav-link" href="login.html?action=logout">Logout</a>
           </li>
         </ul>
       </div>
@@ -89,7 +88,15 @@ footer {
               <div class="col-lg-12">
                 <span style="font-weight: bold">Name:</span> <span id="filename"></span><br>
 				<span style="font-weight: bold">Path:</span> <span id="filepath"></span><br>
-				<span style="font-weight: bold">Server:</span> <span id="fileserver"></span>
+				<span style="font-weight: bold">Server:</span> <span id="fileserver"></span><br>
+				<a data-toggle="collapse" href="#addInfoCard" role="button" aria-expanded="false" aria-controls="collapseExample">
+					More Information
+				  </a>
+				<div class="collapse" id="addInfoCard">
+				  <div class="card card-body" id="addInfo">
+				
+				  </div>
+				</div>
               </div>
             </div>
           </div>
@@ -100,8 +107,9 @@ footer {
           <h5 class="card-header">Actions</h5>
           <div class="card-body">
             <div style="margin-top: 0.5em;">
-			<a id="downloadfile" href="" download><button type="button" class="btn btn-primary">Download</button></a>
+			<a id="downloadfile" href="" download><button id="dlbutton" type="button" class="btn btn-primary" disabled>Download</button></a>
 			<a id="sharefile" href="" style="display: none"><button type="button" class="btn btn-primary">Share</button></a>
+			<a id="favfile" href="" style="display: none"><button id="btnfavfile" type="button" class="btn btn-primary">Favourite</button></a>
 			</div>
           </div>
         </div>
@@ -116,26 +124,29 @@ footer {
 
  
 </div>
- <!-- Footer -->
-  <footer class="py-5 bg-dark">
+<div id="footer">
+	  <footer class="py-5 bg-dark" style="margin-top: 7em">
     <div class="container">
       <p class="m-0 text-center text-white">Copyright &copy; 2019 David Hui and Sat Arora</p>
     </div>
     <!-- /.container -->
   </footer>
+</div>
   
   <!-- Bootstrap core JavaScript -->
   <script src="vendor/jquery/jquery.min.js"></script>
   <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 <script src="https://vjs.zencdn.net/7.5.4/video.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jwt-decode@2.2.0/build/jwt-decode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
 <script>
 var fileID = get('id');
 var token = get('token');
 var gfileInfo;
-var webHost = "";
+var webHost = "https://blazingasher.github.io/ICS3U-FSE";
 var controllerHost = "http://127.0.0.1:5000";
+var favLoc = -2;
 
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
@@ -163,18 +174,13 @@ function getOperationToken(mode = "token"){
 	}
 }
 
-</script>
-<script>
-$(function (){
-localStorage.setItem("lastPage", "file");
-
 function getFileType(filename){
 	filename = filename.toLowerCase();
 	var extension = filename.split('.').pop();
 	var types = {
 		"png": ["image", "nothing"],
 		"jpg": ["image", "nothing"],
-		"img": ["image", "nothing"],
+		"gif": ["image", "nothing"],
 		"mp4": ["video", "video/mp4"],
 		"webm": ["video", "video/webm"],
 		"ogg": ["video", "video/ogg"],
@@ -188,6 +194,28 @@ function getFileType(filename){
 		type = "unknown"
 	}
 	return type
+}
+
+function formatBytes(a,b){if(0==a)return"0 Bytes";var c=1024,d=b||2,e=["Bytes","KB","MB","GB","TB","PB","EB","ZB","YB"],f=Math.floor(Math.log(a)/Math.log(c));return parseFloat((a/Math.pow(c,f)).toFixed(d))+" "+e[f]}
+
+function populateAdditional(){
+	if(gfileInfo["properties"]["type"] == "file"){
+		$('#addInfo').append(`<span style="font-weight: bold">Type:</span> File<br>`)
+		$('#addInfo').append(`<span style="font-weight: bold">Last Modified:</span> ${moment.unix(gfileInfo["properties"]["lastmod"]).format("YYYY/MM/DD [at] h:mm:ss a")}<br>`)
+		$('#addInfo').append(`<span style="font-weight: bold">Size:</span> ${formatBytes(gfileInfo["properties"]["size"])}<br>`)
+		
+		for (var [key, value] of Object.entries(gfileInfo["properties"]["additional"])) {
+			if(value == ""){
+				value = "null";
+			}	
+			$('#addInfo').append(`<span style="font-weight: bold">${key}:</span> ${value}<br>`)
+		}
+	}
+	else{
+		$('#addInfo').append(`<span style="font-weight: bold">Type:</span> Folder<br>`)
+	}
+	
+	
 }
 
 function generateMediaComponent(src, type, add){
@@ -227,30 +255,7 @@ function generateMediaComponent(src, type, add){
 	}
 }
 
-	
-$("#sharefile").click(function (e){
-e.preventDefault();
-	$.ajax({
-		url: controllerHost + "/share/",
-		contentType: 'application/json; charset=utf-8',
-		dataType: 'json',
-		headers: {
-			"Authorization": "Bearer "+getOperationToken()
-		},
-		type: 'POST',
-		data: JSON.stringify({"path": gfileInfo.path, "server": gfileInfo.server}),
-		success: function (data) {
-			var url = webHost + "/file.html?token=" + data.token;
-			Swal.fire({
-			  title: 'Link Generated!',
-			  type: 'success',
-			  html: `A sharing link has been created!<br><a href="${url}">${url}</a>`
-			})
-		}
-	});
-});
-
-function setup(query){
+	function setup(query){
 	$.ajax({
 		url: controllerHost + "/query/",
 		data: JSON.stringify(query),
@@ -281,11 +286,20 @@ function setup(query){
 						console.log(requestUrl);
 						var fileMetadata = getFileType(fileInfo.subject);
 						generateMediaComponent(requestUrl, fileMetadata[0], fileMetadata[1]);	
-						$("#downloadfile").attr("href", requestUrl);
+						
 						$("#filename").text(fileInfo.subject);
 						$("#filepath").text(fileInfo.path);
 						$("#fileserver").text(fileInfo.server);
 						gfileInfo = fileInfo;
+						getLocOfFav(gfileInfo["_id"]["$oid"]);
+						if(favLoc != -1){
+							$('#btnfavfile').text("Unfavourite")
+						}
+						if(gfileInfo["properties"]["type"] == "file"){
+							$('#dlbutton').attr("disabled", false);
+							$("#downloadfile").attr("href", requestUrl);
+						}
+						populateAdditional();
 					}
 					
 				}
@@ -295,42 +309,125 @@ function setup(query){
 	});
 }
 
-if(getOperationToken("type") == "request"){
-	try{
-		var tokenInfo = jwt_decode(token);
-	}
-	catch(err){
-		Swal.fire({
-			  title: 'Access Denied',
-			  type: 'error',
-			  text: 'You do not have permission to access this resource'
-			}).then(() => {
-			window.location.replace(webHost);
-		})
-	}
-	
-	console.log(tokenInfo);
-	$.ajax({
-		url: controllerHost + "/query/",
-		data: JSON.stringify({"operation": "getOneByQuery", "query": {"path": tokenInfo.scope, "server": tokenInfo.server}}),
-		contentType: 'application/json; charset=utf-8',
-		dataType: 'json',
-		headers: {
-			"Authorization": "Bearer "+getOperationToken()
-		},
-		type: 'POST',
-		success: function (data) {
-			console.log(data);
-			setup({"operation": "getById", "id": data.data["_id"]["$oid"]});
+function getLocOfFav(id){
+	var favs = JSON.parse(localStorage.getItem("favourites"));
+	if(favs){
+		console.log(favs);
+		var index = -1;
+		for (var i=0;i<favs.favs.length;i++){
+			if(favs.favs[i]["id"] == id){
+				index = i;
+			}
 		}
+		favLoc = index;
+	}
+	else{
+		favLoc = -1;
+	}
+}
+
+</script>
+<script>
+$(function (){
+	localStorage.setItem("lastPage", "file");
+
+	$("#sharefile").click(function (e){
+		e.preventDefault();
+		$.ajax({
+			url: controllerHost + "/share/",
+			contentType: 'application/json; charset=utf-8',
+			dataType: 'json',
+			headers: {
+				"Authorization": "Bearer "+getOperationToken()
+			},
+			type: 'POST',
+			data: JSON.stringify({"path": gfileInfo.path, "server": gfileInfo.server}),
+			success: function (data) {
+				var url = webHost + "/file.html?token=" + data.token;
+				Swal.fire({
+				  title: 'Link Generated!',
+				  type: 'success',
+				  html: `A sharing link has been created!<br><a href="${url}">${url}</a>`
+				})
+			}
+		});
 	});
-	
-}
-else{
-	setup({"operation": "getById", "id": fileID});
-	$("#sharefile").show();
-}
-	
+
+	$("#favfile").click(function (e){
+		e.preventDefault();
+		if(favLoc == -1){
+			var favs = JSON.parse(localStorage.getItem("favourites"))
+			var fav = {"path": gfileInfo["path"], "server": gfileInfo["server"], "id": gfileInfo["_id"]["$oid"]}
+			console.log(fav);
+			
+			
+			if(!favs){
+				favs = {"favs": []}
+			}
+			console.log(favs);
+			
+			favs.favs.push(fav);
+			localStorage.setItem("favourites", JSON.stringify(favs))
+			$('#btnfavfile').text("Unfavourite")
+			favLoc = favs.favs.length-1;
+		}
+		else{
+			var favs = JSON.parse(localStorage.getItem("favourites"))
+			var fav = {"path": gfileInfo["path"], "server": gfileInfo["server"], "id": gfileInfo["_id"]["$oid"]}
+			console.log(fav);
+			
+			
+			if(!favs){
+				favs = {"favs": []}
+			}
+			console.log(favs);
+			
+			favs.favs.splice(favLoc, 1);
+			localStorage.setItem("favourites", JSON.stringify(favs))
+			$('#btnfavfile').text("Favourite")
+			favLoc = -1
+		}
+		
+		
+	});
+
+	if(getOperationToken("type") == "request"){
+		try{
+			var tokenInfo = jwt_decode(token);
+		}
+		catch(err){
+			Swal.fire({
+				  title: 'Access Denied',
+				  type: 'error',
+				  text: 'You do not have permission to access this resource'
+				}).then(() => {
+				window.location.replace(webHost + "/login.html");
+			})
+		}
+		
+		console.log(tokenInfo);
+		$.ajax({
+			url: controllerHost + "/query/",
+			data: JSON.stringify({"operation": "getOneByQuery", "query": {"path": tokenInfo.scope, "server": tokenInfo.server}}),
+			contentType: 'application/json; charset=utf-8',
+			dataType: 'json',
+			headers: {
+				"Authorization": "Bearer "+getOperationToken()
+			},
+			type: 'POST',
+			success: function (data) {
+				console.log(data);
+				setup({"operation": "getById", "id": data.data["_id"]["$oid"]});
+			}
+		});
+		
+	}
+	else{
+		setup({"operation": "getById", "id": fileID});
+		$("#sharefile").show();
+		$("#favfile").show();
+	}
+		
 });
 </script>
 

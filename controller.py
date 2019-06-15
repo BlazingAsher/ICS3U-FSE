@@ -8,6 +8,7 @@ import json
 from flask_cors import CORS
 import pymongo
 from passlib.hash import sha256_crypt
+from bson.objectid import ObjectId
 
 app = Flask(__name__)
 CORS(app)
@@ -80,10 +81,7 @@ def r_removeserver():
         rbody = request.get_json()
         try:
             server = rbody["server"]
-            if server == "global" or authStat["server"] == server:
-                del heartbeat[server]
-            else:
-                return jsonify({"code": 403, "error": "Insufficient permissions"})
+            del heartbeat[server]
         except KeyError:
             return jsonify({"code": 400, "error": "Invalid request"})
         return jsonify({"code": 200, "message": "OK"})
@@ -105,7 +103,7 @@ def r_share():
     else:
         return jsonify({"code": 401, "error": "Not authorized"})
 
-@app.route('/createuser/', methods=['POST'])
+@app.route('/user/create/', methods=['POST'])
 def r_createuser():
     rbody = request.get_json()
     authStat = isAuthenticated(request)
@@ -113,8 +111,11 @@ def r_createuser():
         try:
             username = rbody["username"]
             password = rbody["password"]
-            userdb.insert_one({"username": username, "password": sha256_crypt.encrypt(password)})
-            return jsonify({"code": 200, "message": "OK"})
+            if userdb.count_documents({"username": username}) < 1:
+                userdb.insert_one({"username": username, "password": sha256_crypt.encrypt(password)})
+                return jsonify({"code": 200, "message": "OK"})
+            else:
+                return jsonify({"code": 400, "error": "User already exists"})
         except KeyError:
             return jsonify({"code": 400, "error": "Invalid request"})
     else:
@@ -124,8 +125,8 @@ def r_createuser():
 def r_userauth():
     rbody = request.get_json()
     try:
-        username = rbody["username"]
-        password = rbody["password"]
+        username = rbody["username"].strip()
+        password = rbody["password"].strip()
     except KeyError:
         return jsonify({"code": 400, "error": "Invalid request"})
     user = userdb.find_one({"username": username})
@@ -140,6 +141,43 @@ def r_userauth():
             return jsonify({"code": 401, "error": "Not authorized"})
     except TypeError:
         return jsonify({"code": 401, "error": "Not authorized"})
+
+@app.route('/user/', methods=['GET'])
+def r_users():
+    authStat = isAuthenticated(request)
+    if authStat[0] and authStat[1]["scope"] == "all":
+        users = userdb.find({}, {"username":1})
+        return jsonify({"code": 200, "users": json.loads(dumps(users))})
+    else:
+        return jsonify({"code": 401, "error": "Not authorized"})
+
+@app.route('/user/delete/', methods=['POST'])
+def r_deluser():
+    rbody =  request.get_json()
+    authStat = isAuthenticated(request)
+    if authStat[0] and authStat[1]["scope"] == "all":
+        try:
+            userid = rbody["userid"]
+            userdb.remove({"_id": ObjectId(userid)})
+            return jsonify({"code": 200, "message": "OK"})
+        except KeyError:
+            return jsonify({"code": 400, "error": "Invalid request"})
+    else:
+            return jsonify({"code": 401, "error": "Not authorized"})
+
+@app.route('/clearIndex/', methods=['POST'])
+def r_clearIndex():
+    authStat = isAuthenticated(request)
+    if authStat[0] and authStat[1]["scope"] == "all":
+        rbody = request.get_json()
+        server = rbody["server"]
+        try:
+            fileIndex.removeFromIndexByMongoQuery({"server": server})
+            return jsonify({"code": 200, "message": "Index removed"})
+        except KeyError:
+            return jsonify({"code": 400, "error": "Invalid request"})
+    else:
+            return jsonify({"code": 401, "error": "Not authorized"})
 
 @app.route('/query/', methods=['POST'])
 def r_query():

@@ -88,7 +88,7 @@ class Processor:
         # Prefer an exact match
         matchedReg = ""
         for reg in self.compiledMatches:
-            if reg[0].replace("\/","/") == strToMatch:
+            if reg[0].replace("\/","/").replace("\.",".") == strToMatch:
                 return dic[reg[0]]
             elif reg[1].match(strToMatch):
                 matchedReg = reg[0]
@@ -163,7 +163,7 @@ class Index:
         self._indexCollection.insert_one(toInsert)
 
     def removeFromIndexByMongoQuery(self, query):
-        self._indexCollection.delete_one(query)
+        self._indexCollection.delete_many(query)
 
     def removeFromIndexByPath(self, path):
         self.removeFromIndexByMongoQuery({"path":path})
@@ -172,7 +172,7 @@ class Index:
         self.removeFromIndexByMongoQuery({"_id":docID})
 
     def updateIndexByMongoQuery(self, query, new):
-        self.indexCollection.update_one(query, new)
+        self._indexCollection.update_one(query, new)
 
     def updateIndexByPath(self, path, new):
         self.updateIndexByMongoQuery({"path": path}, new)
