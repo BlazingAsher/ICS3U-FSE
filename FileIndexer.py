@@ -163,7 +163,7 @@ class Index:
         self._indexCollection.insert_one(toInsert)
 
     def removeFromIndexByMongoQuery(self, query):
-        self._indexCollection.delete_one(query)
+        self._indexCollection.delete_many(query)
 
     def removeFromIndexByPath(self, path):
         self.removeFromIndexByMongoQuery({"path":path})
@@ -172,7 +172,7 @@ class Index:
         self.removeFromIndexByMongoQuery({"_id":docID})
 
     def updateIndexByMongoQuery(self, query, new):
-        self.indexCollection.update_one(query, new)
+        self._indexCollection.update_one(query, new)
 
     def updateIndexByPath(self, path, new):
         self.updateIndexByMongoQuery({"path": path}, new)

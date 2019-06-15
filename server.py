@@ -6,11 +6,13 @@ from multiprocessing.pool import ThreadPool
 import re
 import queue
 import threading
+from threading import Event, Thread
 import uuid
 import json
 import requests
 import urllib.parse
 from flask_cors import CORS
+import time
 
 app = Flask(__name__)
 CORS(app)
@@ -39,6 +41,8 @@ exclusions = ["node_modules", "\.git"]
 
 # Store async jobs
 jobs = []
+
+running = True
 
 # Index build status (current,total)
 job_status = {"build":{"completed": 0,"total": 0, "state": "OK", "additional": "Not initialized","cancelled": True}}
@@ -133,10 +137,33 @@ def createIndex(path, options={}):
 def loadSettings():
     fp.loadSettings()
 
-#key = requests.post(CONTROLLER_URL+"/authenticate",data=json.dumps({"secret": CONTROLLER_SECRET, "server": SERVER_NAME, "url": SERVER_URL}))
-#print(key)
-# Register with the controller
-#requests.get(CONTROLLER_URL+"
+def shutdown_server():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()
+
+def send_heartbeat(key):
+    requests.post(CONTROLLER_URL+"/heartbeat/",headers={"Authorization": "Bearer "+key})
+
+class HeartBeatThread(Thread):
+    def __init__(self, event, key):
+        Thread.__init__(self)
+        self.stopped = event
+        self.key = key
+
+    def run(self):
+        while not self.stopped.wait(1):
+            #print("my thread")
+            send_heartbeat(self.key)
+
+key = requests.post(CONTROLLER_URL+"/authenticate/",json={"secret": CONTROLLER_SECRET, "server": SERVER_NAME, "url": SERVER_URL}).json()["token"]
+print(key)
+
+stopFlag = Event()
+
+hb = HeartBeatThread(stopFlag, key)
+hb.start()
 
 @app.route("/")
 def r_home():
@@ -184,3 +211,9 @@ def r_retrieveFile(path):
         return send_file(dpath, as_attachment=True)
     except KeyError:
         return jsonify({"code": 400, "error": "Invalid request"})
+
+@app.route("/kill/")
+def kill_server():
+    stopFlag.set()
+    shutdown_server()
+    return jsonify({"code": 200, "message": "Server killed"})

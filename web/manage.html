@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <title>Blog Post - Start Bootstrap Template</title>
+
+  <!-- Bootstrap core CSS -->
+  <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Custom styles for this template -->
+  <link href="css/blog-post.css" rel="stylesheet">
+
+<style>
+.spacer {
+	height: 1em;
+}
+
+.hovercard:hover{
+	background-color: #f4f4f4 !important;
+	cursor: pointer;
+}
+</style>
+
+</head>
+
+<body>
+
+<div style="position: relative; min-height: 100vh">
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container">
+      <a class="navbar-brand" href="#">QwikSearch</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarResponsive">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#">Home
+              
+            </a>
+          </li>
+          <li class="nav-item active">
+            <a class="nav-link" href="manage.html">Management</a>
+			<span class="sr-only">(current)</span>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="login.html?action=logout">Logout</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Content -->
+  <div class="container">
+
+    <div class="row">
+
+      <!-- Post Content Column -->
+      <div class="col-lg-12">
+
+        <!-- Title -->
+        <h1 class="mt-4">Users</h1>
+
+        <hr>
+		
+		<div>
+			<table class="table table-bordered">
+			  <thead>
+				<tr>
+				  <th scope="col">Username</th>
+				  <th scope="col">Delete</th>
+				</tr>
+			  </thead>
+			  <tbody id="usertable">
+			  </tbody>
+			</table>
+		</div>
+		
+		<h3>Create User</h3>
+		<form class="form-inline">
+		  <label class="sr-only" for="inlineFormInputUsername">Username</label>
+		  <input type="text" class="form-control mb-2 mr-sm-2" id="inlineFormInputUsername" placeholder="Username">
+
+		  <label class="sr-only" for="inlineFormInputPassword">Password</label>
+		  <div class="input-group mb-2 mr-sm-2">
+			<input type="password" class="form-control" id="inlineFormInputPassword" placeholder="Password">
+		  </div>
+
+
+		  <button id="btnCreateUser" type="submit" class="btn btn-primary mb-2">Submit</button>
+		</form>
+		
+		<h1 class="mt-4">Servers</h1>
+        <hr>
+
+		<div>
+			<table class="table table-bordered">
+			  <thead>
+				<tr>
+				  <th scope="col">Name</th>
+				  <th scope="col">Base URL</th>
+				  <th scope="col">Last Contact</th>
+				  <th scope="col">Index Build Status</th>
+				  <th scope="col">Build Index</th>
+				  <th scope="col">Kick</th>
+				  <th scope="col">Kill</th>
+				</tr>
+			  </thead>
+			  <tbody id="servertable">
+			  </tbody>
+			</table>
+		</div>
+		
+		<h1 class="mt-4">Index</h1>
+        <hr>
+		
+		<button id="btnClearIndex" type="button" class="btn btn-primary">Clear Index Entries</button>
+
+      </div>
+
+
+    </div>
+    <!-- /.row -->
+
+  </div>
+  <!-- /.container -->
+
+  <!-- Footer -->
+  <footer class="py-5 bg-dark" style="margin-top: 7em">
+    <div class="container">
+      <p class="m-0 text-center text-white">Copyright &copy; 2019 David Hui and Sat Arora</p>
+    </div>
+    <!-- /.container -->
+  </footer>
+</div>
+  <!-- Bootstrap core JavaScript -->
+  <script src="vendor/jquery/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
+  <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+
+<script>
+var card = '<div class="card hovercard"><div class="card-body"><h5 class="card-title">document.docx</h5><p class="card-text">With supporting text below as a natural lead-in to additional content.</p></div></div><div class="spacer"></div>';
+
+var webHost = "file:///C:/Users/David/Documents/Git Projects/ICS3U FSE/web";
+var controllerHost = "http://127.0.0.1:5000";
+
+var gservers = {};
+
+function get(name){
+   if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
+      return decodeURIComponent(name[1]);
+}
+
+function delUser(id,dataset){
+	Swal.fire({
+		title: 'Are you sure?',
+		type: 'warning',
+		html: 'Are you sure you want to delete the user <span style="font-weight: bold">'+dataset["username"]+'</span>?',
+		showCancelButton: true,
+		cancelButtonText: 'Cancel',
+		confirmButtonText: 'Yes',
+		confirmButtonColor: '#d33',
+	}).then((result) => {
+		if(result.value){
+			$.ajax({
+				url: controllerHost + "/user/delete/",
+				data: JSON.stringify({"userid": id}),
+				contentType: 'application/json; charset=utf-8',
+				dataType: 'json',
+				type: 'POST',
+				headers: {
+					"Authorization": "Bearer "+localStorage.getItem("token")
+				},
+				success: function (data) {
+					console.log(data);
+					if(data.code == 200){
+						Swal.fire({
+						  title: 'Success',
+						  type: 'success',
+						  text: 'User has been deleted!'
+						})
+						
+						populateUsers();
+					}
+					else{
+						Swal.fire({
+							  title: 'Error!',
+							  type: 'error',
+							  text: data.error
+							})
+					}
+				}
+			})
+		}
+		
+	})
+	
+}
+
+function populateUsers(){
+	$.ajax({
+        url: controllerHost + "/user/",
+        type: 'GET',
+		headers: {
+			"Authorization": "Bearer "+localStorage.getItem("token")
+		},
+        success: function (data) {
+			console.log(data);
+			$("#usertable").empty()
+			for(var i=0;i<data.users.length;i++){
+				$('#usertable').append('<tr><td>'+data.users[i]["username"]+'</td><td>' + '<button id="'+data.users[i]["_id"]["$oid"]+'" class="btn btn-primary" onclick="delUser(this.id,this.dataset)" data-username="'+data.users[i]["username"]+'">Delete</button></td></tr>')
+			}
+        }
+    });
+}
+
+function rebuildServer(data){
+	console.log(data);
+	var serverHost = gservers[data["server"]][0]
+	Swal.fire({
+		  title: 'Information Needed',
+		  text: 'Enter the path of the index root',
+		  type: 'info',
+		  input: 'text',
+		  inputAttributes: {
+			autocapitalize: 'off'
+		  },
+		  showCancelButton: true,
+		  confirmButtonText: 'Create',
+		}).then((result) => {
+		  if (result.value) {
+			$.ajax({
+				url: serverHost + "/index/",
+				data: JSON.stringify({"path": result.value}),
+				contentType: 'application/json; charset=utf-8',
+				dataType: 'json',
+				type: 'POST',
+				success: function (data) {
+					console.log(data);
+					if(data.code == 200){
+						Swal.fire({
+						  title: 'Success',
+						  type: 'success',
+						  text: 'Index build started!'
+						})
+						
+					}
+					else{
+						Swal.fire({
+							  title: 'Error!',
+							  type: 'error',
+							  text: data.error
+						})
+					}
+				}
+			})
+		  }
+		})
+	
+}
+
+function cancelRebuildServer(pdata){
+	console.log(pdata);
+	var serverHost = gservers[pdata["server"]][0]
+	Swal.fire({
+		  title: 'Are you sure?',
+		  html: 'This will leave dangling indexes!',
+		  type: 'warning',
+		  showCancelButton: true,
+		  cancelButtonText: 'Cancel',
+		  confirmButtonText: 'Yes',
+		  confirmButtonColor: '#d33',
+		}).then((result) => {
+		  if (result.value) {
+			$.ajax({
+				url: serverHost + "/job/build/cancel/",
+				type: 'GET',
+				success: function (data) {
+					console.log(data);
+					
+					if(data.code == 200){
+						Swal.fire({
+						  title: 'Success',
+						  type: 'success',
+						  text: 'Build canceled!'
+						})
+						
+					}
+					else{
+						Swal.fire({
+							  title: 'Error!',
+							  type: 'error',
+							  text: data.error
+						})
+					}
+				}
+			})
+		  }
+		})
+}
+
+function kickServer(data, verbose = true){
+	console.log(data);
+	
+	$.ajax({
+		url: controllerHost + "/server/remove/",
+		data: JSON.stringify({"server": data["server"]}),
+		contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+		type: 'POST',
+		headers: {
+			"Authorization": "Bearer "+localStorage.getItem("token")
+		},
+		success: function (data) {
+			console.log(data);
+			if(data.code == 200){
+				if(verbose){
+					Swal.fire({
+					  title: 'Success',
+					  type: 'success',
+					  text: 'Server has been kicked!'
+					})
+				}
+				
+				
+				populateServers();
+			}
+			else{
+				if(verbose){
+					Swal.fire({
+						  title: 'Error!',
+						  type: 'error',
+						  text: data.error
+						})
+				}
+				
+			}
+			//injectResults(data);
+		}
+	})
+}
+
+function killServer(pdata){
+	console.log(pdata);
+	var serverHost = gservers[pdata["server"]][0]
+	Swal.fire({
+		  title: 'Are you sure?',
+		  html: 'Are you sure you want to kill <span style="font-weight: bold">'+pdata["server"]+'</span>? It will <span style="font-weight: bold">NOT</span> restart!',
+		  type: 'warning',
+		  showCancelButton: true,
+		  cancelButtonText: 'Cancel',
+		  confirmButtonText: 'Kill',
+		  confirmButtonColor: '#d33',
+		}).then((result) => {
+		  if (result.value) {
+			$.ajax({
+				url: serverHost + "/kill/",
+				type: 'GET',
+				success: function (data) {
+					console.log(data);
+					
+					if(data.code == 200){
+						Swal.fire({
+						  title: 'Success',
+						  type: 'success',
+						  text: 'Server killed!'
+						}).then(() => {
+							kickServer(pdata, false);
+						})
+						
+					}
+					else{
+						Swal.fire({
+							  title: 'Error!',
+							  type: 'error',
+							  text: data.error
+						})
+					}
+				}
+			})
+		  }
+		})
+}
+
+function populateServers(){
+	$.ajax({
+			url: controllerHost + "/server/",
+			type: 'GET',
+			headers: {
+				"Authorization": "Bearer "+localStorage.getItem("token")
+			},
+			success: function (data) {
+				console.log(data);
+				gservers = data.servers;
+				$("#servertable").empty();
+				servers = Object.entries(data.servers)
+				for (const [name, info] of servers) {
+					var serverHost = info[0]
+					var buildIndexString = ""
+					
+					$.ajax({
+						url: serverHost + "/job/build/",
+						type: 'GET',
+						success: function (data) {
+							console.log(data);
+							if(data.status.cancelled){
+								buildIndexString = "Cancelled"
+							}
+							else{
+								buildIndexString += data.status.additional;
+								buildIndexString += " ";
+								var percentage = Math.round((data.status.completed/data.status.total)*100,2);
+								buildIndexString += `(${percentage}%)`
+							}
+							
+							$('#servertable').append(`<tr><td>${name}</td><td><a href="${info[0]}" target="_blank">${info[0]}</a></td><td>${moment().millisecond(info[1]).format("dddd, MMMM Do YYYY, h:mm:ss a")}</td><td>${buildIndexString}</td><td><button id="server-rebuild-${name}" class="btn btn-primary" onclick="rebuildServer(this.dataset)" data-server="${name}">Build</button> <button id="server-rebuild-cancel-${name}" class="btn btn-danger" onclick="cancelRebuildServer(this.dataset)" data-server="${name}">Cancel Build</button></td><td><button id="server-kick-${name}" class="btn btn-warning" onclick="kickServer(this.dataset)" data-server="${name}">Kick</button></td><td><button id="server-kill-${name}" class="btn btn-danger" onclick="killServer(this.dataset)" data-server="${name}">Kill</button></td></tr>`)
+						}
+					})
+				}
+			}
+		});
+}
+
+$(function (){
+	$("#searchQuery").select();
+	var urlQuery = get("query");
+	if(urlQuery){
+		$("#searchQuery").val(urlQuery);
+		$("#searchBtn").click();
+	}
+	/*
+	var query = {"operation": "getAll"}
+	$.ajax({
+        url: "http://127.0.0.1:5000/query/",
+        data: JSON.stringify(query),
+        contentType: 'application/json; charset=utf-8',
+		dataType: 'json',
+        type: 'POST',
+        success: function (data) {
+			console.log(data);
+			
+            injectResults(data);
+        }
+    });*/
+	
+	populateUsers();
+	populateServers();
+	
+	$('#btnCreateUser').click(function (e){
+		e.preventDefault();
+		$.ajax({
+			url: controllerHost + "/user/create/",
+			data: JSON.stringify({"username": $('#inlineFormInputUsername').val(), "password": $('#inlineFormInputPassword').val()}),
+			contentType: 'application/json; charset=utf-8',
+			dataType: 'json',
+			type: 'POST',
+			headers: {
+				"Authorization": "Bearer "+localStorage.getItem("token")
+			},
+			success: function (data) {
+				console.log(data);
+				if(data.code == 200){
+					$('#inlineFormInputUsername').val("")
+					$('#inlineFormInputPassword').val("")
+					Swal.fire({
+					  title: 'Success',
+					  type: 'success',
+					  text: 'User has been created!'
+					})
+					populateUsers();
+				}
+				else{
+					Swal.fire({
+						  title: 'Error!',
+						  type: 'error',
+						  text: data.error
+						})
+				}
+				//injectResults(data);
+			}
+		})
+		
+	})
+	
+	$("#btnClearIndex").click(function (){
+		Swal.fire({
+		  title: 'Information Needed',
+		  text: 'Enter the name of the server of which you want to clear the index',
+		  type: 'info',
+		  input: 'text',
+		  inputAttributes: {
+			autocapitalize: 'off'
+		  },
+		  showCancelButton: true,
+		  confirmButtonText: 'Clear',
+		}).then((result) => {
+		  if (result.value) {
+			$.ajax({
+				url: controllerHost + "/clearIndex/",
+				data: JSON.stringify({"server": result.value}),
+				contentType: 'application/json; charset=utf-8',
+				dataType: 'json',
+				headers: {
+					"Authorization": "Bearer "+localStorage.getItem("token")
+				},
+				type: 'POST',
+				success: function (data) {
+					console.log(data);
+					if(data.code == 200){
+						Swal.fire({
+						  title: 'Success',
+						  type: 'success',
+						  text: 'Index cleared!'
+						})
+						
+					}
+					else{
+						Swal.fire({
+							  title: 'Error!',
+							  type: 'error',
+							  text: data.error
+						})
+					}
+				}
+			})
+		  }
+		})
+	});
+	
+});
+
+$("#check1").change(function (){
+	if(this.checked){
+		showFolders = false;
+	}
+	else{
+		showFolders = true;
+	}
+});
+</script>
+</body>
+
+</html>
