@@ -13,6 +13,7 @@ class Response:
         
 class Processor:
     def __init__(self, **kwargs):
+        # Initializes paths and settings
         self.magic = kwargs.get("magic")
         self.SERVER_NAME = kwargs.get("server_name")
         self.mime = magic.Magic(mime=True, magic_file=self.magic)
@@ -21,14 +22,20 @@ class Processor:
         self._db = self._client.fileindexer
         self._settingscol = self._db.settings
         self._settings = self._settingscol.find_one({"name":"global"})
-    
+
+    # This will store loaded plugins
     _plugins = {}
 
+    # Map mime types to plugins
     formatMap = {}
 
+    # Map extensions with (most common) mime types
     extMap = {}
 
+    # Stores complied re matches for speed
     compiledMatches = {}
+
+    # Default settings for plugins and the server
     defaultSettings = {
         "name": "global",
         "crawler": {
@@ -105,19 +112,20 @@ class Processor:
             
         if mime == "none/none":
             # try to get mime information
-            #print("thru mime")
+
             mime = self.mime.from_file(path)
-        #print(mime)
+
         # Get the plugin that is registered to handle the file type
         additionalPlugin = self.dictKeyRegEx(self.formatMap, mime)
-        #print("to plugin",additionalPlugin)
+
+        # If a plugin is returned, run it
         if additionalPlugin:
             additional = self._plugins[additionalPlugin](self, path)
         else:
             additional = {}
 
         return additional
-    #get all properties
+    # Will assemble properties of the file
     def getAllProperties(self, path):
         if os.path.isfile(path):
             properties = {}
@@ -138,45 +146,58 @@ class Index:
         self._client = pymongo.MongoClient(kwargs.get("db"))
         self._db = self._client.fileindexer
         self._indexCollection = self._db.index
-    
+
+    # Clear the WHOLE index
     def clearIndex(self):
         self._indexCollection.delete_many({})
-
+        
+    # Returns all documents in the database
     def getAll(self, page_size, page_num):
         skips = page_size * (page_num - 1)
         return self._indexCollection.find({}).skip(skips).limit(page_size)
 
+    # Returns ONE document in the database that matches the query
     def getOneByQuery(self, query):
         return self._indexCollection.find_one(query)
-
+    
+    # Returns ALL documents in the database that matches the query
     def getAllByQuery(self, query, page_size, page_num):
         skips = page_size * (page_num - 1)
         return self._indexCollection.find(query).skip(skips).limit(page_size)
 
+    # Returns ONE document in the database that matches ID
     def getById(self, oid):
         return self._indexCollection.find({"_id": ObjectId(oid)})
 
+    # Get the size of the index
     def getIndexSize(self):
         return self._indexCollection.count()
 
+    # Add a file to the index
     def addToIndex(self, path, properties, server):
         toInsert = {"subject":os.path.basename(path), "path": path, "server": server, "properties": properties}
         self._indexCollection.insert_one(toInsert)
 
+    # Remove files from the db that matches the query
     def removeFromIndexByMongoQuery(self, query):
         self._indexCollection.delete_many(query)
 
+    # Remove files from the db that matches the given path
     def removeFromIndexByPath(self, path):
         self.removeFromIndexByMongoQuery({"path":path})
 
+    # Remove file from the db that matches the id
     def removeFromIndexById(self, docID):
         self.removeFromIndexByMongoQuery({"_id":docID})
 
+    # Update an index entry by the id
     def updateIndexByMongoQuery(self, query, new):
         self._indexCollection.update_one(query, new)
 
+    # Update an index entry by the path
     def updateIndexByPath(self, path, new):
         self.updateIndexByMongoQuery({"path": path}, new)
 
+    # Update an index entry by the ID
     def updateIndexById(self, docID, new):
         self.updateIndexByMongoQuery({"_id":docID}, new)

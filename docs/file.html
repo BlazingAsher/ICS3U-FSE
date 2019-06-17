@@ -144,18 +144,23 @@
 var fileID = get('id');
 var token = get('token');
 var gfileInfo;
+// Locations of web server and controller
 var webHost = "https://blazingasher.github.io/ICS3U-FSE";
 var controllerHost = "http://127.0.0.1:5000";
 var favLoc = -2;
 
+// Return GET data
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
       return decodeURIComponent(name[1]);
 }
+
+// Decide which token to use for authorization, mode specifies whether to return the token or just the type of the token
 function getOperationToken(mode = "token"){
 	var lstoken = localStorage.getItem("token");
 	var reqtoken = token;
-
+	
+	// Prefer the local storage token,  as it will have higher privileges
 	if(lstoken === null){
 		if(mode == "token"){
 			return reqtoken;
@@ -174,6 +179,7 @@ function getOperationToken(mode = "token"){
 	}
 }
 
+// Maps displayable content file extensions to mime types for HTML
 function getFileType(filename){
 	filename = filename.toLowerCase();
 	var extension = filename.split('.').pop();
@@ -186,8 +192,7 @@ function getFileType(filename){
 		"ogg": ["video", "video/ogg"],
 		"pdf": ["pdf", "nothing"],
 		"mp3": ["audio", "audio/mpeg"],
-		"wav": ["audio", "audio/wav"],
-		"txt": ["plaintext", "nothing"]
+		"wav": ["audio", "audio/wav"]
 	};
 	type = types[extension]
 	if (type === undefined){
@@ -196,14 +201,18 @@ function getFileType(filename){
 	return type
 }
 
+// Will return the largest possible unit of bytes
 function formatBytes(a,b){if(0==a)return"0 Bytes";var c=1024,d=b||2,e=["Bytes","KB","MB","GB","TB","PB","EB","ZB","YB"],f=Math.floor(Math.log(a)/Math.log(c));return parseFloat((a/Math.pow(c,f)).toFixed(d))+" "+e[f]}
 
+// Gets additional information about the file and injects them info the DOM
 function populateAdditional(){
+	// Extended information is only supported for files
 	if(gfileInfo["properties"]["type"] == "file"){
 		$('#addInfo').append(`<span style="font-weight: bold">Type:</span> File<br>`)
 		$('#addInfo').append(`<span style="font-weight: bold">Last Modified:</span> ${moment.unix(gfileInfo["properties"]["lastmod"]).format("YYYY/MM/DD [at] h:mm:ss a")}<br>`)
 		$('#addInfo').append(`<span style="font-weight: bold">Size:</span> ${formatBytes(gfileInfo["properties"]["size"])}<br>`)
 		
+		// Loop through the extended attributes and inject them as wlel
 		for (var [key, value] of Object.entries(gfileInfo["properties"]["additional"])) {
 			if(value == ""){
 				value = "null";
@@ -218,6 +227,7 @@ function populateAdditional(){
 	
 }
 
+// Generates the element to display displayable media and injects them into the DOM
 function generateMediaComponent(src, type, add){
 	if(type == "video"){
 		var eleVid = `<video id="my-video" class="video-js" controls preload="auto" width="640" height="264"
@@ -247,15 +257,15 @@ function generateMediaComponent(src, type, add){
 		$("#fileview").append(elePdf);
 		$("#pdfsrc").attr("src", "pdfjs/viewer.html?file="+encodeURIComponent(src));
 	}
-	else if(type == "plaintext"){
-		
-	}
 	else {
 		$("#fileview").append("<h2>Unable to preview this file</h2>");
 	}
 }
 
-	function setup(query){
+	
+// Initial function to get basic data about the file
+function setup(query){
+	// Contact the controller and return file information (most important: server)
 	$.ajax({
 		url: controllerHost + "/query/",
 		data: JSON.stringify(query),
@@ -267,6 +277,7 @@ function generateMediaComponent(src, type, add){
 		type: 'POST',
 		success: function (data) {
 			var fileInfo = data.data;
+			// List the servers and find the address of the one to contact
 			$.ajax({
 				url: controllerHost + "/server/",
 				type: 'GET',
@@ -274,41 +285,48 @@ function generateMediaComponent(src, type, add){
 					"Authorization": "Bearer "+getOperationToken()
 				},
 				success: function (data2) {
-					console.log(data2);
-					console.log(data2.servers[fileInfo.server]);
-					
+					// Server not found
 					if(data2.servers[fileInfo.server] === undefined){
 						$("#fileview").append("<h2>Unable to contact server</h2>");
 					}
 					else{
+						// Create an embedable URL that will point to the file
 						var serverAddress = data2.servers[fileInfo.server][0];
 						var requestUrl = serverAddress + "/retrieve/" + encodeURIComponent(fileInfo.path);
 						console.log(requestUrl);
 						var fileMetadata = getFileType(fileInfo.subject);
+						// Generates the HTML element and injects it into the DOM
 						generateMediaComponent(requestUrl, fileMetadata[0], fileMetadata[1]);	
 						
+						// Show some basic information about the file to the user
 						$("#filename").text(fileInfo.subject);
 						$("#filepath").text(fileInfo.path);
 						$("#fileserver").text(fileInfo.server);
 						gfileInfo = fileInfo;
+						
+						// Check if the file is a favourite
 						getLocOfFav(gfileInfo["_id"]["$oid"]);
 						if(favLoc != -1){
 							$('#btnfavfile').text("Unfavourite")
 						}
+						
+						// Check if the file is downloadable
 						if(gfileInfo["properties"]["type"] == "file"){
 							$('#dlbutton').attr("disabled", false);
 							$("#downloadfile").attr("href", requestUrl);
 						}
+						
+						// Inject additional data about the file
 						populateAdditional();
 					}
 					
 				}
 			});
-			//console.log(data);
 		}
 	});
 }
 
+// Gets the index of the favourite in the favourites array
 function getLocOfFav(id){
 	var favs = JSON.parse(localStorage.getItem("favourites"));
 	if(favs){
@@ -328,11 +346,16 @@ function getLocOfFav(id){
 
 </script>
 <script>
+
+// Runs once the page loads
 $(function (){
+	// Set the last page visited to the file page
 	localStorage.setItem("lastPage", "file");
 
+	// Register a handler when the share file button is clicked
 	$("#sharefile").click(function (e){
 		e.preventDefault();
+		// Requets a token from the controller
 		$.ajax({
 			url: controllerHost + "/share/",
 			contentType: 'application/json; charset=utf-8',
@@ -344,6 +367,7 @@ $(function (){
 			data: JSON.stringify({"path": gfileInfo.path, "server": gfileInfo.server}),
 			success: function (data) {
 				var url = webHost + "/file.html?token=" + data.token;
+				// Show a prompt with the link
 				Swal.fire({
 				  title: 'Link Generated!',
 				  type: 'success',
@@ -352,22 +376,24 @@ $(function (){
 			}
 		});
 	});
-
+	
+	// Registers a handler for when the favourite file button is clicked
 	$("#favfile").click(function (e){
 		e.preventDefault();
+		// If the file is not a favourite, add it
 		if(favLoc == -1){
 			var favs = JSON.parse(localStorage.getItem("favourites"))
 			var fav = {"path": gfileInfo["path"], "server": gfileInfo["server"], "id": gfileInfo["_id"]["$oid"]}
-			console.log(fav);
-			
-			
+
+			// If favourites component as never been run, setup the schema
 			if(!favs){
 				favs = {"favs": []}
 			}
-			console.log(favs);
 			
 			favs.favs.push(fav);
+			// Store the favourite in localStorage
 			localStorage.setItem("favourites", JSON.stringify(favs))
+			// Update the UI
 			$('#btnfavfile').text("Unfavourite")
 			favLoc = favs.favs.length-1;
 		}
@@ -376,14 +402,14 @@ $(function (){
 			var fav = {"path": gfileInfo["path"], "server": gfileInfo["server"], "id": gfileInfo["_id"]["$oid"]}
 			console.log(fav);
 			
-			
 			if(!favs){
 				favs = {"favs": []}
 			}
-			console.log(favs);
 			
+			// Remove the favourite from favourites storage
 			favs.favs.splice(favLoc, 1);
 			localStorage.setItem("favourites", JSON.stringify(favs))
+			// Update the UI
 			$('#btnfavfile').text("Favourite")
 			favLoc = -1
 		}
@@ -391,8 +417,10 @@ $(function (){
 		
 	});
 
+	// If the token type is request, meaning there is no ID parameter, we need to get the ID of the file
 	if(getOperationToken("type") == "request"){
 		try{
+			// Decode the token to ensure the grant is legitimate
 			var tokenInfo = jwt_decode(token);
 		}
 		catch(err){
@@ -405,7 +433,7 @@ $(function (){
 			})
 		}
 		
-		console.log(tokenInfo);
+		// Query the controller for the file ID that has the requested path and server
 		$.ajax({
 			url: controllerHost + "/query/",
 			data: JSON.stringify({"operation": "getOneByQuery", "query": {"path": tokenInfo.scope, "server": tokenInfo.server}}),
@@ -417,13 +445,17 @@ $(function (){
 			type: 'POST',
 			success: function (data) {
 				console.log(data);
+				// Setup the page
 				setup({"operation": "getById", "id": data.data["_id"]["$oid"]});
 			}
 		});
 		
 	}
 	else{
+		// If it is a user token, meaning there will be an ID parameter in the URL, begin page setup immediately
 		setup({"operation": "getById", "id": fileID});
+		
+		// Show the share and favourite buttons (available only to users NOT shared people)
 		$("#sharefile").show();
 		$("#favfile").show();
 	}

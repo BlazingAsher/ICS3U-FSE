@@ -124,19 +124,24 @@
 <script>
 var card = '<div class="card hovercard"><div class="card-body"><h5 class="card-title">document.docx</h5><p class="card-text">With supporting text below as a natural lead-in to additional content.</p></div></div><div class="spacer"></div>';
 
+// Locations of the web server and controller
 var webHost = "https://blazingasher.github.io/ICS3U-FSE";
 var controllerHost = "http://127.0.0.1:5000";
 
 var gservers = {};
 
+// Returns GET query parameters
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
       return decodeURIComponent(name[1]);
 }
 
+// Get favourites
 function populateFavs(){
+	// Read JSON data from localStorage
 	var favs = JSON.parse(localStorage.getItem("favourites"))
 	console.log(favs);
+	// Iterate through all entries and append to the favourites table
 	for(var i=0;i<favs.favs.length;i++){
 		var fav = favs.favs[i]
 		var favid = fav["id"]
@@ -145,11 +150,14 @@ function populateFavs(){
 	}
 }
 
+// Remove a favourite
 function unfav(data){
 	var favid = data["id"]
+	// Get currently stored favourites
 	var favs = JSON.parse(localStorage.getItem("favourites"))
 	var favLoc;
 	var index = -1;
+	// Locate the location of the favourite with requested id
 	for (var i=0;i<favs.favs.length;i++){
 		if(favs.favs[i]["id"] == favid){
 			index = i;
@@ -157,7 +165,9 @@ function unfav(data){
 	}
 	favLoc = index;
 	
+	// Remove the favourite from the favourites storage
 	favs.favs.splice(favLoc, 1);
+	// Store the new set of favourites into localStorage and refresh the favourites table
 	localStorage.setItem("favourites", JSON.stringify(favs))
 	$('#favtable').empty();
 	populateFavs();
@@ -165,102 +175,14 @@ function unfav(data){
 
 $(function (){
 
+	// Ensure that the user is authenticated
 	if(!localStorage.getItem("token")){
 		window.location.replace(webHost+"/login.html");
 	}
 
+	// Populate the favourites table
 	populateFavs();
 	
-	$('#btnCreateUser').click(function (e){
-		e.preventDefault();
-		$.ajax({
-			url: controllerHost + "/user/create/",
-			data: JSON.stringify({"username": $('#inlineFormInputUsername').val(), "password": $('#inlineFormInputPassword').val()}),
-			contentType: 'application/json; charset=utf-8',
-			dataType: 'json',
-			type: 'POST',
-			headers: {
-				"Authorization": "Bearer "+localStorage.getItem("token")
-			},
-			success: function (data) {
-				console.log(data);
-				if(data.code == 200){
-					$('#inlineFormInputUsername').val("")
-					$('#inlineFormInputPassword').val("")
-					Swal.fire({
-					  title: 'Success',
-					  type: 'success',
-					  text: 'User has been created!'
-					})
-					populateUsers();
-				}
-				else{
-					Swal.fire({
-						  title: 'Error!',
-						  type: 'error',
-						  text: data.error
-						})
-				}
-				//injectResults(data);
-			}
-		})
-		
-	})
-	
-	$("#btnClearIndex").click(function (){
-		Swal.fire({
-		  title: 'Information Needed',
-		  text: 'Enter the name of the server of which you want to clear the index',
-		  type: 'info',
-		  input: 'text',
-		  inputAttributes: {
-			autocapitalize: 'off'
-		  },
-		  showCancelButton: true,
-		  confirmButtonText: 'Clear',
-		}).then((result) => {
-		  if (result.value) {
-			$.ajax({
-				url: controllerHost + "/clearIndex/",
-				data: JSON.stringify({"server": result.value}),
-				contentType: 'application/json; charset=utf-8',
-				dataType: 'json',
-				headers: {
-					"Authorization": "Bearer "+localStorage.getItem("token")
-				},
-				type: 'POST',
-				success: function (data) {
-					console.log(data);
-					if(data.code == 200){
-						Swal.fire({
-						  title: 'Success',
-						  type: 'success',
-						  text: 'Index cleared!'
-						})
-						
-					}
-					else{
-						Swal.fire({
-							  title: 'Error!',
-							  type: 'error',
-							  text: data.error
-						})
-					}
-				}
-			})
-		  }
-		})
-	});
-	
-});
-
-$("#check1").change(function (){
-	if(this.checked){
-		showFolders = false;
-	}
-	else{
-		showFolders = true;
-	}
 });
 </script>
 </body>
