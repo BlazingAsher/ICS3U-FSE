@@ -132,6 +132,17 @@
 			</div>
           </div>
         </div>
+		
+		<div class="card my-4">
+          <h5 class="card-header">Forward To Google</h5>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-lg-12">
+                <button class="btn btn-success" onclick="fwdReq()">Forward</button>
+              </div>
+            </div>
+          </div>
+        </div>
 
       </div>
 
@@ -170,6 +181,10 @@ var currPage = 1;
 var pageSize = 25;
 var showFolders = false;
 var queryServers = [];
+
+function fwdReq(){
+	window.location.replace("https://google.ca/search?q="+$("#searchQuery").val())
+}	
 
 function getNext(){
 	var query = makeRequest(currPage+1, pageSize);
@@ -291,9 +306,13 @@ function makeQuery(query, nextFunc="inject"){
 $(function (){
 	$("#searchQuery").select();
 	var urlQuery = get("query");
-	if(urlQuery){
-		$("#searchQuery").val(urlQuery);
+	
+	if(urlQuery && urlQuery[0] == "/" && urlQuery[1] == "/"){
+		$("#searchQuery").val(urlQuery.substring(2));
 		$("#searchBtn").click();
+	}
+	else if(urlQuery){
+		window.location.replace("https://google.ca/search?q="+urlQuery);
 	}
 /*
 	var query = {"operation": "getAll"}
