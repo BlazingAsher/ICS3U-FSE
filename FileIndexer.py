@@ -117,7 +117,7 @@ class Processor:
             additional = {}
 
         return additional
-
+    #get all properties
     def getAllProperties(self, path):
         if os.path.isfile(path):
             properties = {}
@@ -132,6 +132,7 @@ class Processor:
             return properties
         else:
             raise OSError
+#class of Index operations
 class Index:
     def __init__(self, **kwargs):
         self._client = pymongo.MongoClient(kwargs.get("db"))
