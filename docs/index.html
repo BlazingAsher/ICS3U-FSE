@@ -169,9 +169,11 @@
 <script>
 var card = '<div class="card hovercard"><div class="card-body"><h5 class="card-title">document.docx</h5><p class="card-text">With supporting text below as a natural lead-in to additional content.</p></div></div><div class="spacer"></div>';
 
+// Stores URL of web server and controller
 var webHost = "https://blazingasher.github.io/ICS3U-FSE";
 var controllerHost = "https://controller.412294.xyz";
 
+// Retrieve GET query parameters
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
       return decodeURIComponent(name[1]);
@@ -182,16 +184,19 @@ var pageSize = 25;
 var showFolders = false;
 var queryServers = [];
 
+// Forward the request to Google
 function fwdReq(){
 	window.location.replace("https://google.ca/search?q="+$("#searchQuery").val())
 }	
 
+// Get the next page of data from the db
 function getNext(){
 	var query = makeRequest(currPage+1, pageSize);
 	makeQuery(query, "next");
 	
 }
 
+// Get previous page of data from the db
 function getPrev(){
 	if(currPage > 1){
 		var query = makeRequest(currPage-1, pageSize);
@@ -200,6 +205,7 @@ function getPrev(){
 	
 }
 
+// Make sure there is actually more information in the next page before injecting
 function procNext(data){
 	if(data.data.length > 0){
 		injectResults(data);
@@ -213,15 +219,18 @@ function procPrev(data){
 	injectResults(data);
 }
 
+// Forward the user to the file they request
 function getFile(oid){
 	console.log(oid);
 	window.location.href = "file.html?id="+oid;
 }
 
+// Assembles a result card
 function assembleCard(id, title, path){
 	return '<div id="' + id + '" class="card hovercard" onclick="getFile(this.id)"><div class="card-body"><h5 class="card-title">' + title +'</h5><p class="card-text">' + path +'</p></div></div><div class="spacer"></div>';
 }
 
+// Injects results into the DOM
 function injectResults(data){
 	$("#results").empty();
 	if(data.data.length > 0){
@@ -229,10 +238,12 @@ function injectResults(data){
 			$("#results").append(assembleCard(data.data[i]["_id"]["$oid"], data.data[i]["subject"], data.data[i]["path"]));
 		}
 		
-		
+		// Inject navigation buttons for the pages
+		// Previous page, if page # is greater than 1
 		if(currPage > 1){
 			$("#results").append('<button class="btn btn-secondary" type="button" id="searchBtn" onclick="getPrev()" style="margin-right: 1em"><< Prev</button>');
 		}
+		//Next page, if document count is equal to or greater than the amount a page can hold
 		if(data.data.length >= data["page_size"]){
 			$("#results").append('<button class="btn btn-secondary" type="button" id="searchBtn" onclick="getNext()">Next >></button>');
 		}
@@ -246,10 +257,12 @@ function injectResults(data){
 	
 }
 
+// Create a request based on curently selected parameters
 function makeRequest(page=1, page_size=25){
 	currPage = page;
 	pageSize = page_size;
-	console.log(currPage);
+	
+	// Get whether to search the whole path or only the filename
 	var searchIn = $('input[name=searchIn]:checked').val();
 	var query = {"operation": "getAllByQuery", "page": page, "page_size": page_size, "query": {"$and":[]}}
 	if(searchIn == "path"){
@@ -258,6 +271,9 @@ function makeRequest(page=1, page_size=25){
 	else if(searchIn = "filename"){
 		query["query"]["$and"].push({"subject": {"$regex": $("#searchQuery").val()}});
 	}
+	
+	// Restrict which servers to contact based on the array queryServers
+	// Generates a regex
 	var serverRegSelect = "(";
 	for(var i=0;i<queryServers.length;i++){
 		serverRegSelect += queryServers[i];
@@ -267,6 +283,7 @@ function makeRequest(page=1, page_size=25){
 	}
 	serverRegSelect+=")"
 	query["query"]["$and"].push({"server": {"$regex": serverRegSelect}});
+	// If no servers are selected, DO NOT run a query, it is useless!
 	if(serverRegSelect == "()"){
 		return "NONE"
 	}else{
@@ -279,6 +296,7 @@ function makeRequest(page=1, page_size=25){
 }
 
 function makeQuery(query, nextFunc="inject"){
+	// Query the controller
 	$.ajax({
 		url: controllerHost+ "/query/",
 		data: JSON.stringify(query),
@@ -289,6 +307,7 @@ function makeQuery(query, nextFunc="inject"){
 			"Authorization": "Bearer "+localStorage.getItem("token")
 		},
 		success: function (data) {
+			// Inject the results into the DOM
 			if(nextFunc == "inject"){
 				injectResults(data);
 			}
@@ -298,6 +317,7 @@ function makeQuery(query, nextFunc="inject"){
 			else if(nextFunc == "prev"){
 				procPrev(data);
 			}
+			// Store the last search data so that it can get restored on page back
 			localStorage.setItem("lastSearch", JSON.stringify({"search": $("searchQuery").val(), "currPage": currPage, "pageSize": pageSize, "data": data}))
 		}
 	});
@@ -307,27 +327,19 @@ $(function (){
 	$("#searchQuery").select();
 	var urlQuery = get("query");
 	
+	
+	// Check if there is a query parameter and if the activator string is present
 	if(urlQuery && urlQuery[0] == "/" && urlQuery[1] == "/"){
+		// Auto search the index for the user
 		$("#searchQuery").val(urlQuery.substring(2));
 		$("#searchBtn").click();
 	}
 	else if(urlQuery){
+		// Forward to Google
 		window.location.replace("https://google.ca/search?q="+urlQuery);
 	}
-/*
-	var query = {"operation": "getAll"}
-	$.ajax({
-        url: "http://127.0.0.1:5000/query/",
-        data: JSON.stringify(query),
-        contentType: 'application/json; charset=utf-8',
-		dataType: 'json',
-        type: 'POST',
-        success: function (data) {
-			console.log(data);
-			
-            injectResults(data);
-        }
-    });*/
+
+	// If the last page visited was a file page, restore the search phrase and results to preserve continuity
 	var lastPage = localStorage.getItem("lastPage");
 	if (lastPage == "file"){
 		var lastSearch = localStorage.getItem("lastSearch");
@@ -339,8 +351,11 @@ $(function (){
 			injectResults(lastSearchObj["data"]);
 		}
 	}
+	
+	// Set the last page visited to the search page
 	localStorage.setItem("lastPage", "search");
 	
+	// List all servers
 	$.ajax({
         url: controllerHost+"/server/",
         type: 'GET',
@@ -352,8 +367,10 @@ $(function (){
 				console.log(data);
 				for (var property in data.servers) {
 					if (data.servers.hasOwnProperty(property)) {
+						// Add the server to the array of online servers and inject the toggle box to the interface
 						queryServers.push(property);
 						$("#servers").append(`<label for="server-${property}">${property}: </label> <input type="checkbox" id="server-${property}" data-server="${property}" checked>`);
+						// When the toggle box is clicked, remove or add the server to the array of servers to contact
 						$(`#server-${property}`).change(function (){
 							var thing = ($(this))
 							console.log(thing);
@@ -394,7 +411,7 @@ $(function (){
         }
     });
 	
-	
+	// Press the search button when users presses enter
 	$("#searchQuery").keypress(function (e){
 		var keycode = (e.keyCode ? e.keyCode : e.which);
 		if(keycode == '13'){
@@ -402,8 +419,10 @@ $(function (){
 		}
 	});
 	
+	// Register a handler for when the search button is pressed
 	$("#searchBtn").click(function (e){
 		e.preventDefault();
+		// Create the query and send to the controller
 		var query = makeRequest();
 		if(query == "NONE"){
 			$("#results").empty();
@@ -417,6 +436,7 @@ $(function (){
 	
 });
 
+// Toggles whether to query for folders or not (based on checked/unchecked event)
 $("#check1").change(function (){
 	if(this.checked){
 		showFolders = false;

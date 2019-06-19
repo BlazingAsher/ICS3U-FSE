@@ -21,6 +21,7 @@ env = Env()
 env.read_env()
 
 MAX_RECURSION_DEPTH = 999999999
+# Load all the settings from the ENV file
 MONGO_STRING = env("MONGO_STRING")
 SERVER_NAME = env("SERVER_NAME")
 SERVER_URL = env("SERVER_URL")
@@ -28,6 +29,7 @@ MAGIC_FILE = env("MAGIC_FILE")
 CONTROLLER_URL = env("CONTROLLER_URL")
 CONTROLLER_SECRET = env("CONTROLLER_SECRET")
 
+# Initialize the file processing modules
 fp = fi.Processor(db=MONGO_STRING, magic=MAGIC_FILE, server_name=SERVER_NAME)
 fp.loadPlugins()
 fp.loadSettings()
@@ -57,6 +59,7 @@ def populateProperties(path, options={}):
     if not job_status["build"]["cancelled"]:
         try:
             #print("----------------------")
+            # Acquire a lock to prevent race conditions
             job_status_lock.acquire()
             print("lock acquire")
             try:
@@ -64,6 +67,7 @@ def populateProperties(path, options={}):
             finally:
                 job_status_lock.release()
             print("lock release")
+            # Request the file at the path to be indexed
             fileIndex.addToIndex(path, fp.getAllProperties(path), SERVER_NAME)
         except OSError:
             pass
@@ -119,6 +123,7 @@ def createIndex(path, options={}):
 
         print("list done")
         job_status["build"] = {"completed": 0,"total": len(allPaths),"state": "OK","additional": "File-tree built","cancelled": False}
+        # Initialize the threadpool
         tp =  ThreadPool(16)
         for path in allPaths:
             # Assign a new task to populate properties of the file/directory to the thread pool
@@ -139,15 +144,18 @@ def createIndex(path, options={}):
 def loadSettings():
     fp.loadSettings()
 
+# Shuts down the server
 def shutdown_server():
     func = request.environ.get('werkzeug.server.shutdown')
     if func is None:
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
 
+# Send heartbeats to the controller
 def send_heartbeat(key):
     requests.post(CONTROLLER_URL+"/heartbeat/",headers={"Authorization": "Bearer "+key})
 
+# This thread will send heartbeats to the server every second
 class HeartBeatThread(Thread):
     def __init__(self, event, key):
         Thread.__init__(self)
@@ -156,9 +164,9 @@ class HeartBeatThread(Thread):
 
     def run(self):
         while not self.stopped.wait(1):
-            #print("my thread")
             send_heartbeat(self.key)
 
+# Get an authorization token from the controller
 key = requests.post(CONTROLLER_URL+"/authenticate/",json={"secret": CONTROLLER_SECRET, "server": SERVER_NAME, "url": SERVER_URL}).json()["token"]
 print(key)
 
@@ -171,10 +179,12 @@ hb.start()
 def r_home():
     return jsonify({"code": 400, "error": "No command"})
 
+# List all mulithreaded jobs
 @app.route("/job/")
 def r_listjob():
     return jsonify({"code": 200, "jobs": job_status})
 
+# Get information about a job
 @app.route("/job/<jobid>/")
 def r_jobstat(jobid):
     try:
@@ -183,6 +193,7 @@ def r_jobstat(jobid):
     except KeyError:
         return jsonify({"code": 400, "error": "Job ID not found"})
 
+# Cancel a job
 @app.route("/job/<jobid>/cancel/")
 def r_jobcancel(jobid):
     try:
@@ -194,17 +205,21 @@ def r_jobcancel(jobid):
     finally:
         job_status_lock.release()
     
+# Request a new index to be made
 @app.route("/index/", methods=['POST'])
 def r_createIndex():
     global job_status
     req_data = request.get_json()
+    # Ensure that an index is not currently being built
     if job_status["build"]["total"] - job_status["build"]["completed"] == 0:
+        # Start createIndex on a seperate thread so that client does not need to wait before HTTP response is sent
         thread = threading.Thread(target = createIndex, args = (req_data["path"],))
         thread.start()
         return jsonify({"code": 200, "message": "Job created", "jobid": "build"})
     else:
         return jsonify({"code": 400, "error": "An index is currently being built"})
 
+# Retrieves a file on the file system at the requested path
 @app.route("/retrieve/<path>", methods=['GET'])
 def r_retrieveFile(path):
     req_data = request.get_json()
@@ -214,6 +229,7 @@ def r_retrieveFile(path):
     except KeyError:
         return jsonify({"code": 400, "error": "Invalid request"})
 
+# Kill the server
 @app.route("/kill/")
 def kill_server():
     stopFlag.set()

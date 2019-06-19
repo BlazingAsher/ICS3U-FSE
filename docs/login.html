@@ -1,4 +1,4 @@
-
+<!--TEMPLATE CODE-->
 <!------ Include the above in your HEAD tag ---------->
 
 <!doctype html>
@@ -43,7 +43,7 @@
         </div>
     </div>
 </nav>
-
+<!--Login Form-->
 <main class="login-form">
     <div class="cotainer">
         <div class="row justify-content-center">
@@ -91,9 +91,11 @@ function get(name){
 }
 
 </script>
+<!--getting action script-->
 <script>
 $(function () {
 	var action = get("action");
+	// Check if the user wants to logout, clear the token from localStorage
 	if(action == "logout"){
 		localStorage.removeItem("token");
 		Swal.fire({
@@ -103,10 +105,11 @@ $(function () {
 			})
 	}
 	else{
+		// Register a handler for when the form is submitted
 		$("#loginform").submit(function (e){
+			// Prevent the browser from submiting the form
 			e.preventDefault();
-			console.log($("#username").val());
-			console.log($("#password").val());
+			// Contact the controller the authenticate the user
 			$.ajax({
 				url: controllerHost+"/userauth/",
 				data: JSON.stringify({"username": $("#username").val(), "password": $("#password").val()}),
@@ -116,7 +119,7 @@ $(function () {
 				success: function (data) {
 					console.log(data);
 					if(data.token){
-					
+						// If successful, store the token and forward the user to the search page
 						localStorage.setItem("token", data.token);
 						window.location.replace("index.html");
 					}

@@ -153,17 +153,21 @@
 <script>
 var card = '<div class="card hovercard"><div class="card-body"><h5 class="card-title">document.docx</h5><p class="card-text">With supporting text below as a natural lead-in to additional content.</p></div></div><div class="spacer"></div>';
 
+// Location of the web server and the controller
 var webHost = "https://blazingasher.github.io/ICS3U-FSE";
 var controllerHost = "https://controller.412294.xyz";
 
 var gservers = {};
 
+// Retrieve GET request parameters
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
       return decodeURIComponent(name[1]);
 }
 
+// Function to delete users
 function delUser(id,dataset){
+	// Make sure the user wants to do this
 	Swal.fire({
 		title: 'Are you sure?',
 		type: 'warning',
@@ -174,6 +178,7 @@ function delUser(id,dataset){
 		confirmButtonColor: '#d33',
 	}).then((result) => {
 		if(result.value){
+			// Send the request to the controller
 			$.ajax({
 				url: controllerHost + "/user/delete/",
 				data: JSON.stringify({"userid": id}),
@@ -209,6 +214,7 @@ function delUser(id,dataset){
 	
 }
 
+// Get all the users in the system
 function populateUsers(){
 	$.ajax({
         url: controllerHost + "/user/",
@@ -216,9 +222,10 @@ function populateUsers(){
 		headers: {
 			"Authorization": "Bearer "+localStorage.getItem("token")
 		},
-        success: function (data) {
-			console.log(data);
+        success: function (data) {			
 			$("#usertable").empty()
+			
+			// Inject the results into the table
 			for(var i=0;i<data.users.length;i++){
 				$('#usertable').append('<tr><td>'+data.users[i]["username"]+'</td><td>' + '<button id="'+data.users[i]["_id"]["$oid"]+'" class="btn btn-primary" onclick="delUser(this.id,this.dataset)" data-username="'+data.users[i]["username"]+'">Delete</button></td></tr>')
 			}
@@ -226,9 +233,11 @@ function populateUsers(){
     });
 }
 
+// Request an index rebuild
 function rebuildServer(data){
 	console.log(data);
 	var serverHost = gservers[data["server"]][0]
+	// Ask for the root of the index to build
 	Swal.fire({
 		  title: 'Information Needed',
 		  text: 'Enter the path of the index root',
@@ -241,6 +250,7 @@ function rebuildServer(data){
 		  confirmButtonText: 'Create',
 		}).then((result) => {
 		  if (result.value) {
+			// Send the request to the server
 			$.ajax({
 				url: serverHost + "/index/",
 				data: JSON.stringify({"path": result.value}),
@@ -271,9 +281,11 @@ function rebuildServer(data){
 	
 }
 
+// Cancel index rebuild
 function cancelRebuildServer(pdata){
 	console.log(pdata);
 	var serverHost = gservers[pdata["server"]][0]
+	// Make sure the user wants to do this
 	Swal.fire({
 		  title: 'Are you sure?',
 		  html: 'This will leave dangling indexes!',
@@ -284,6 +296,7 @@ function cancelRebuildServer(pdata){
 		  confirmButtonColor: '#d33',
 		}).then((result) => {
 		  if (result.value) {
+			// Send the request to the server
 			$.ajax({
 				url: serverHost + "/job/build/cancel/",
 				type: 'GET',
@@ -311,9 +324,10 @@ function cancelRebuildServer(pdata){
 		})
 }
 
+// Remove the server from the heartbeat
 function kickServer(data, verbose = true){
 	console.log(data);
-	
+	// Send the request to the controller
 	$.ajax({
 		url: controllerHost + "/server/remove/",
 		data: JSON.stringify({"server": data["server"]}),
@@ -352,9 +366,11 @@ function kickServer(data, verbose = true){
 	})
 }
 
+// Send a request to kill the server
 function killServer(pdata){
 	console.log(pdata);
 	var serverHost = gservers[pdata["server"]][0]
+	// Make sure the user actually wants to do this
 	Swal.fire({
 		  title: 'Are you sure?',
 		  html: 'Are you sure you want to kill <span style="font-weight: bold">'+pdata["server"]+'</span>? It will <span style="font-weight: bold">NOT</span> restart!',
@@ -365,6 +381,7 @@ function killServer(pdata){
 		  confirmButtonColor: '#d33',
 		}).then((result) => {
 		  if (result.value) {
+			// Send the request to the server
 			$.ajax({
 				url: serverHost + "/kill/",
 				type: 'GET',
@@ -394,6 +411,7 @@ function killServer(pdata){
 		})
 }
 
+// Gets servers in the system
 function populateServers(){
 	$.ajax({
 			url: controllerHost + "/server/",
@@ -404,12 +422,15 @@ function populateServers(){
 			success: function (data) {
 				console.log(data);
 				gservers = data.servers;
+				// Empty the table
 				$("#servertable").empty();
 				servers = Object.entries(data.servers)
+				// Loop through the servers and get information about them
 				for (const [name, info] of servers) {
 					var serverHost = info[0]
 					var buildIndexString = ""
 					
+					// Get the current index build status
 					$.ajax({
 						url: serverHost + "/job/build/",
 						type: 'GET',
@@ -424,8 +445,8 @@ function populateServers(){
 								var percentage = Math.round((data.status.completed/data.status.total)*100,2);
 								buildIndexString += `(${percentage}%)`
 							}
-							console.log(info);
 							
+							// Inject the data into the DOM
 							$('#servertable').append(`<tr><td>${name}</td><td><a href="${info[0]}" target="_blank">${info[0]}</a></td><td>${moment.unix(info[1]).format("dddd, MMMM Do YYYY, h:mm:ss a")}</td><td>${buildIndexString}</td><td><button id="server-rebuild-${name}" class="btn btn-primary" onclick="rebuildServer(this.dataset)" data-server="${name}">Build</button> <button id="server-rebuild-cancel-${name}" class="btn btn-danger" onclick="cancelRebuildServer(this.dataset)" data-server="${name}">Cancel Build</button></td><td><button id="server-kick-${name}" class="btn btn-warning" onclick="kickServer(this.dataset)" data-server="${name}">Kick</button></td><td><button id="server-kill-${name}" class="btn btn-danger" onclick="killServer(this.dataset)" data-server="${name}">Kill</button></td></tr>`)
 						}
 					})
@@ -436,15 +457,19 @@ function populateServers(){
 
 $(function (){
 
+	// Make sure that the user is authenticated
 	if(!localStorage.getItem("token")){
 		window.location.replace(webHost+"/login.html");
 	}
 	
+	// Populate the servers and users in the system
 	populateUsers();
 	populateServers();
 	
+	// Register a handler for the create user button
 	$('#btnCreateUser').click(function (e){
 		e.preventDefault();
+		// Send a request to the controller
 		$.ajax({
 			url: controllerHost + "/user/create/",
 			data: JSON.stringify({"username": $('#inlineFormInputUsername').val(), "password": $('#inlineFormInputPassword').val()}),
@@ -457,6 +482,7 @@ $(function (){
 			success: function (data) {
 				console.log(data);
 				if(data.code == 200){
+					// Clear the form so there is no double submission
 					$('#inlineFormInputUsername').val("")
 					$('#inlineFormInputPassword').val("")
 					Swal.fire({
@@ -464,6 +490,7 @@ $(function (){
 					  type: 'success',
 					  text: 'User has been created!'
 					})
+					// Refresh the users table
 					populateUsers();
 				}
 				else{
@@ -479,7 +506,9 @@ $(function (){
 		
 	})
 	
+	// Registers a handler for when the clear index button is clicked
 	$("#btnClearIndex").click(function (){
+		// Ask for the server index to clear
 		Swal.fire({
 		  title: 'Information Needed',
 		  text: 'Enter the name of the server of which you want to clear the index',
@@ -491,6 +520,7 @@ $(function (){
 		  showCancelButton: true,
 		  confirmButtonText: 'Clear',
 		}).then((result) => {
+			// Send the request to the controller
 		  if (result.value) {
 			$.ajax({
 				url: controllerHost + "/clearIndex/",
@@ -526,14 +556,6 @@ $(function (){
 	
 });
 
-$("#check1").change(function (){
-	if(this.checked){
-		showFolders = false;
-	}
-	else{
-		showFolders = true;
-	}
-});
 </script>
 </body>
 
